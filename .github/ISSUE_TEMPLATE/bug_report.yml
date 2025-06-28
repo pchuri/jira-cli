@@ -1,0 +1,98 @@
+name: Bug Report
+description: Create a report to help us improve
+title: '[BUG] '
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of what the bug is.
+      placeholder: Tell us what you see!
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Run command '...'
+        2. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: What operating system are you running?
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: What version of Node.js are you running?
+      placeholder: e.g. 18.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: cli-version
+    attributes:
+      label: JIRA CLI version
+      description: What version of JIRA CLI are you using?
+      placeholder: e.g. 1.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: jira-type
+    attributes:
+      label: JIRA Server type
+      description: What type of JIRA server are you connecting to?
+      options:
+        - Cloud
+        - Server
+        - Data Center
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: command-output
+    attributes:
+      label: Command output
+      description: Please paste the full command and output
+      render: bash
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
+    validations:
+      required: false
