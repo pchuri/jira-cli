@@ -6,6 +6,12 @@ on:
       - main
       - beta
 
+permissions:
+  contents: write # Required for creating releases and pushing tags
+  issues: write # Required for semantic-release to create issues on failure
+  pull-requests: write # Required for semantic-release to comment on PRs
+  id-token: write # Required for NPM provenance
+
 jobs:
   release:
     runs-on: ubuntu-latest
