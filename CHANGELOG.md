@@ -1,3 +1,21 @@
+# 1.0.0 (2025-06-28)
+
+
+### Bug Fixes
+
+* **ci:** add workflow permissions and make codecov optional ([056eeab](https://github.com/pchuri/jira-cli/commit/056eeab325c7c1c5e3be6acea5639abec0cf8e55))
+* **release:** disable husky hooks for semantic-release ([8232ddc](https://github.com/pchuri/jira-cli/commit/8232ddc9ebf1431f7985ecaec018d74ea24d39e1))
+
+
+### Features
+
+* initial release of modern JIRA CLI ([90012a1](https://github.com/pchuri/jira-cli/commit/90012a133d67f25a0592109bcfafe78f4c0a1544))
+
+
+### BREAKING CHANGES
+
+* Initial release with new CLI architecture
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
