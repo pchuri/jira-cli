@@ -25,7 +25,16 @@ async function createRootCommand(factory, version) {
   
   program
     .name('jira')
-    .description('Work seamlessly with JIRA from the command line')
+    .description('Work seamlessly with JIRA from the command line\n\n' +
+      'Quick Start:\n' +
+      '  $ jira init                    # Setup JIRA CLI (run this first)\n' +
+      '  $ jira issue create            # Create a new issue interactively\n' +
+      '  $ jira issue list              # List your issues\n' +
+      '  $ jira project list            # List available projects\n\n' +
+      'Examples:\n' +
+      '  $ jira issue create --project=TEST --type=Bug --summary="Fix login error"\n' +
+      '  $ jira issue list --assignee=currentUser --status=Open\n' +
+      '  $ jira issue view TEST-123     # View issue details')
     .version(version)
     .configureHelp({
       sortSubcommands: true,

@@ -51,18 +51,23 @@ function createIssueCommand(factory) {
   // Add subcommands
   command
     .command('list')
-    .description('list issues with advanced filtering')
+    .description('list issues with advanced filtering\n\n' +
+      'Examples:\n' +
+      '  $ jira issue list                              # List recent issues\n' +
+      '  $ jira issue list --assignee=currentUser      # Your assigned issues\n' +
+      '  $ jira issue list --status=Open --limit=50    # Open issues (max 50)\n' +
+      '  $ jira issue list --project=TEST --type=Bug   # Bugs in TEST project')
     .alias('ls')
-    .option('--project <project>', 'filter by project')
-    .option('--assignee <assignee>', 'filter by assignee')
-    .option('--status <status>', 'filter by status')
-    .option('--type <type>', 'filter by issue type')
+    .option('--project <project>', 'filter by project key')
+    .option('--assignee <assignee>', 'filter by assignee (use "currentUser" for yourself)')
+    .option('--status <status>', 'filter by status (e.g., Open, In Progress)')
+    .option('--type <type>', 'filter by issue type (e.g., Bug, Story)')
     .option('--reporter <reporter>', 'filter by reporter')
-    .option('--priority <priority>', 'filter by priority')
+    .option('--priority <priority>', 'filter by priority (e.g., High, Medium)')
     .option('--created <date>', 'created date filter (e.g., -7d, 2023-01-01)')
     .option('--updated <date>', 'updated date filter')
-    .option('--limit <limit>', 'limit number of results', '20')
-    .option('--jql <query>', 'custom JQL query')
+    .option('--limit <limit>', 'limit number of results (default: 20)', '20')
+    .option('--jql <query>', 'custom JQL query for advanced filtering')
     .action(async (options) => {
       const io = factory.getIOStreams();
       const client = await factory.getJiraClient();
@@ -93,14 +98,22 @@ function createIssueCommand(factory) {
 
   command
     .command('create')
-    .description('create a new issue')
+    .description('create a new issue\n\n' +
+      'Examples:\n' +
+      '  $ jira issue create                                    # Interactive mode\n' +
+      '  $ jira issue create --project=TEST --type=Bug \\\n' +
+      '                      --summary="Login fails on Safari"\n' +
+      '  $ jira issue create --project=PROJ --type=Story \\\n' +
+      '                      --summary="Add user profile page" \\\n' +
+      '                      --description="Users need a profile page to manage settings" \\\n' +
+      '                      --assignee=john.doe --priority=High')
     .alias('new')
-    .option('--project <project>', 'project key')
-    .option('--type <type>', 'issue type')
-    .option('--summary <summary>', 'issue summary')
-    .option('--description <description>', 'issue description')
-    .option('--assignee <assignee>', 'assignee')
-    .option('--priority <priority>', 'priority')
+    .option('--project <project>', 'project key (e.g., TEST, PROJ)')
+    .option('--type <type>', 'issue type (e.g., Bug, Story, Task)')
+    .option('--summary <summary>', 'issue summary (required)')
+    .option('--description <description>', 'issue description (optional)')
+    .option('--assignee <assignee>', 'assignee username')
+    .option('--priority <priority>', 'priority (e.g., High, Medium, Low)')
     .action(async (options) => {
       const io = factory.getIOStreams();
       const client = await factory.getJiraClient();
