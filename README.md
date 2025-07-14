@@ -44,18 +44,18 @@ npm link
    ```bash
    export JIRA_HOST=your-jira-instance.atlassian.net
    export JIRA_API_TOKEN=your-api-token
+   export JIRA_USERNAME=your-email@company.com    # optional, for user-specific actions
    ```
 
 3. **Verify connection:**
    ```bash
    jira config --show
-   ```
    jira issue --get PROJ-123
    ```
 
 4. **Create a new issue:**
    ```bash
-   jira issue --create
+   jira issue create
    ```
 
 5. **View project information:**
@@ -73,6 +73,16 @@ jira init
 
 ### Option 2: Environment Variables
 
+You can configure the CLI using environment variables in either a new or legacy format:
+
+#### New format (JIRA_HOST)
+```bash
+export JIRA_HOST="your-jira-instance.atlassian.net"
+export JIRA_API_TOKEN="your-api-token"
+export JIRA_USERNAME="your-email@company.com"    # optional when using JIRA_HOST
+```
+
+#### Legacy format (JIRA_DOMAIN)
 ```bash
 export JIRA_DOMAIN="your-domain.atlassian.net"
 export JIRA_USERNAME="your-email@company.com"
@@ -136,68 +146,61 @@ jira issue --list --project PROJ --assignee john.doe --status "To Do"
 
 ```bash
 # Create with interactive prompts
-jira issue --create
+jira issue create
 
-# Create with inline content
-jira create "Bug in login" PROJ --type Bug --description "User cannot login"
-
-# Create from template
-jira create "Feature Request" PROJ --template feature.json
+# Create with inline flags
+jira issue create --project PROJ --type Bug --summary "Bug in login" --description "User cannot login"
 ```
 
 ### Update an Existing Issue
 
 ```bash
 # Update with interactive prompts
-jira issue --update PROJ-123
+jira issue edit PROJ-123
 
 # Update specific fields
-jira update PROJ-123 --status "In Progress" --assignee john.doe
+jira issue edit PROJ-123 --status "In Progress" --assignee john.doe
 
 # Update description
-jira update PROJ-123 --description "Updated description"
+jira issue edit PROJ-123 --description "Updated description"
 ```
 
 ### Search Issues
 
 ```bash
-# Basic search
-jira search "login bug"
+# Search issues with JQL filtering
+jira issue list --jql "login bug"
 
-# Search with JQL
-jira search "project = PROJ AND status = 'In Progress'"
+jira issue list --jql "project = PROJ AND status = 'In Progress'"
 
 # Limit results
-jira search "bug" --limit 5
+jira issue list --jql "bug" --limit 5
 ```
 
 ### Project Management
 
 ```bash
 # List all projects
-jira project --list
+jira project list
 
-# Get specific project details
-jira project --get PROJ
-
-# Get project statistics
-jira stats --project PROJ
+# View project details
+jira project view PROJ
 ```
 
 ### Sprint Management
 
 ```bash
 # List sprints (will prompt for board selection)
-jira sprint --list
+jira sprint list
 
 # List sprints for specific board
-jira sprint --list --board 123
+jira sprint list --board 123
 
 # Show only active sprints
-jira sprint --active
+jira sprint active
 
-# Get sprint details
-jira sprint --get 456
+# List available boards
+jira sprint boards
 ```
 
 ## Commands
@@ -205,17 +208,18 @@ jira sprint --get 456
 | Command | Description | Options |
 |---------|-------------|---------|
 | `init` | Initialize CLI configuration | - |
-| `issue --get <key>` | Get issue details | `--format <json\|table>`, `--verbose` |
-| `issue --list` | List issues | `--project <key>`, `--assignee <user>`, `--status <status>`, `--limit <number>` |
-| `issue --create` | Create new issue | `--project <key>`, `--type <type>`, `--description <text>` |
-| `issue --update <key>` | Update existing issue | `--status <status>`, `--assignee <user>`, `--description <text>` |
-| `issue --delete <key>` | Delete issue | `--force` |
-| `search <query>` | Search for issues | `--limit <number>`, `--format <json\|table>` |
-| `project --list` | List all projects | `--format <json\|table>` |
-| `project --get <key>` | Get project details | `--format <json\|table>` |
-| `sprint --list` | List sprints | `--board <id>`, `--active` |
-| `sprint --get <id>` | Get sprint details | `--format <json\|table>` |
-| `stats` | View usage statistics | `--project <key>` |
+| `issue get <key>` | Get issue details | `--format <json\|table>`, `--verbose` |
+| `issue list` | List issues | `--project <key>`, `--assignee <user>`, `--status <status>`, `--jql <query>`, `--limit <number>` |
+| `issue create` | Create new issue | `--project <key>`, `--type <type>`, `--summary <text>`, `--description <text>`, `--assignee <user>`, `--priority <level>` |
+| `issue edit <key>` | Edit an existing issue (alias: update) | `--summary <text>`, `--description <text>`, `--assignee <user>`, `--priority <level>` |
+| `issue delete <key>` | Delete issue | `--force` |
+| `project list` | List all projects | `--type <type>`, `--category <category>` |
+| `project view <key>` | View project details | - |
+| `project components <key>` | List project components | - |
+| `project versions <key>` | List project versions | - |
+| `sprint list` | List sprints | `--board <id>`, `--state <state>`, `--active` |
+| `sprint active` | List active sprints | `--board <id>` |
+| `sprint boards` | List available boards | - |
 
 ## Configuration File
 
