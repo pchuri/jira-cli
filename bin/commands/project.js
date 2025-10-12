@@ -9,7 +9,7 @@ function createProjectCommand(factory) {
     .option('-g, --get <key>', 'get project by key')
     .action(async (options) => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       const analytics = factory.getAnalytics();
 
       try {
@@ -37,7 +37,7 @@ function createProjectCommand(factory) {
     .option('--category <category>', 'filter by project category')
     .action(async (options) => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       
       try {
         await listProjects(client, io, options);
@@ -53,7 +53,7 @@ function createProjectCommand(factory) {
     .alias('show')
     .action(async (key) => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       
       try {
         await getProject(client, io, key, factory);
@@ -68,7 +68,7 @@ function createProjectCommand(factory) {
     .description('list project components')
     .action(async (key) => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       
       try {
         await listComponents(client, io, key);
@@ -83,7 +83,7 @@ function createProjectCommand(factory) {
     .description('list project versions')
     .action(async (key) => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       
       try {
         await listVersions(client, io, key);
