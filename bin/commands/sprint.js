@@ -11,7 +11,7 @@ function createSprintCommand(factory) {
     .option('-a, --active', 'show only active sprints')
     .action(async (options) => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       const analytics = factory.getAnalytics();
 
       try {
@@ -39,7 +39,7 @@ function createSprintCommand(factory) {
     .option('--state <state>', 'filter by state (active, future, closed)')
     .action(async (options) => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       
       try {
         if (options.board) {
@@ -59,7 +59,7 @@ function createSprintCommand(factory) {
     .option('-b, --board <id>', 'board ID to list sprints for')
     .action(async (options) => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       
       try {
         if (options.board) {
@@ -78,7 +78,7 @@ function createSprintCommand(factory) {
     .description('list available boards')
     .action(async () => {
       const io = factory.getIOStreams();
-      const client = factory.getJiraClient();
+      const client = await factory.getJiraClient();
       
       try {
         await listBoards(client, io);
