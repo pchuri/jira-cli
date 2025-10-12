@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/pchuri/jira-cli/compare/v1.0.0...v1.0.1) (2025-10-12)
+
+
+### Bug Fixes
+
+* trigger release after hotfix ([1bf5509](https://github.com/pchuri/jira-cli/commit/1bf5509304c06241d2be9ab2b3a55b19f7aa44f8))
+
 # 1.0.0 (2025-06-28)
 
 
