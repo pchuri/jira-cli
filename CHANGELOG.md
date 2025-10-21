@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/pchuri/jira-cli/compare/v1.0.1...v1.1.0) (2025-10-21)
+
+
+### Features
+
+* support token-only authentication without username ([#7](https://github.com/pchuri/jira-cli/issues/7)) ([8e2589f](https://github.com/pchuri/jira-cli/commit/8e2589fe1cfe39dd89ab55446c926ff76142ab3d))
+
 ## [1.0.1](https://github.com/pchuri/jira-cli/compare/v1.0.0...v1.0.1) (2025-10-12)
 
 
