@@ -20,6 +20,9 @@ function createIssueCommand(factory) {
     .option('--assignee <assignee>', 'filter by assignee')
     .option('--status <status>', 'filter by status')
     .option('--type <type>', 'filter by issue type')
+    .option('--summary <summary>', 'issue summary (for create/update)')
+    .option('--description <description>', 'issue description (for create/update)')
+    .option('--priority <priority>', 'priority (for create/update)')
     .option('--limit <limit>', 'limit number of results', '20')
     .action(async (options) => {
       const io = factory.getIOStreams();
@@ -30,13 +33,13 @@ function createIssueCommand(factory) {
         await analytics.track('issue', { action: getIssueAction(options) });
 
         if (options.create) {
-          await createIssue(client, io, factory);
+          await createIssue(client, io, factory, options);
         } else if (options.get) {
           await getIssue(client, io, options.get);
         } else if (options.update) {
-          await updateIssue(client, io, options.update);
+          await updateIssue(client, io, options.update, options);
         } else if (options.delete) {
-          await deleteIssue(client, io, options.delete);
+          await deleteIssue(client, io, options.delete, options);
         } else {
           // Default to list issues
           await listIssues(client, io, options);
