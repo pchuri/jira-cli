@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/pchuri/jira-cli/compare/v1.1.0...v1.1.1) (2025-11-18)
+
+
+### Bug Fixes
+
+* honor issue flags in non-interactive mode ([#8](https://github.com/pchuri/jira-cli/issues/8)) ([95aaf54](https://github.com/pchuri/jira-cli/commit/95aaf5407fcbc0b172a58424d1b2e434afcca51e))
+
 # [1.1.0](https://github.com/pchuri/jira-cli/compare/v1.0.1...v1.1.0) (2025-10-21)
 
 
