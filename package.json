@@ -60,18 +60,24 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "eslint": "^8.54.0",
-    "semantic-release": "^22.0.8",
+    "semantic-release": "21.1.2",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^9.2.6",
-    "@semantic-release/npm": "^11.0.2",
+    "@semantic-release/npm": "10.0.6",
     "@commitlint/cli": "^18.4.4",
     "@commitlint/config-conventional": "^18.4.4",
     "husky": "^8.0.3"
   },
   "overrides": {
     "form-data": "4.0.4",
-    "tmp": "0.2.5"
+    "tmp": "0.2.5",
+    "npm": "11.6.2",
+    "brace-expansion": "2.0.2",
+    "semver": "7.6.2",
+    "tar": "6.2.1",
+    "ip": "2.0.1",
+    "glob": "10.3.6"
   },
   "engines": {
     "node": ">=14.0.0"
