@@ -1,3 +1,10 @@
+## [2.1.2](https://github.com/pchuri/jira-cli/compare/v2.1.1...v2.1.2) (2025-12-10)
+
+
+### Bug Fixes
+
+* resolve option parsing conflict in issue subcommands ([#14](https://github.com/pchuri/jira-cli/issues/14)) ([efe6be8](https://github.com/pchuri/jira-cli/commit/efe6be867f4fcda181a156b7385c40bc1df7a136))
+
 ## [2.1.1](https://github.com/pchuri/jira-cli/compare/v2.1.0...v2.1.1) (2025-12-10)
 
 

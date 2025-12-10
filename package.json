@@ -1,6 +1,6 @@
 {
   "name": "@pchuri/jira-cli",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A modern, extensible command line interface for JIRA with Factory pattern and Commander.js",
   "main": "bin/index.js",
   "bin": {
