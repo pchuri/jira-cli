@@ -1,7 +1,6 @@
 const { Command } = require('commander');
 const { createSprintsTable } = require('../../lib/utils');
 const chalk = require('chalk');
-const inquirer = require('inquirer');
 
 function createSprintCommand(factory) {
   const command = new Command('sprint')
@@ -108,28 +107,21 @@ async function listSprints(client, io, activeOnly = false, stateFilter = null) {
     let selectedBoard;
     if (boardsResult.values.length === 1) {
       selectedBoard = boardsResult.values[0];
-    } else {
+      await listSprintsByBoard(client, io, selectedBoard.id, activeOnly, selectedBoard.name, stateFilter);
       spinner.stop();
-      
-      // Let user select board
-      const { boardId } = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'boardId',
-          message: 'Select board:',
-          choices: boardsResult.values.map(board => ({
-            name: `${board.name} (${board.type})`,
-            value: board.id
-          }))
-        }
-      ]);
-      
-      selectedBoard = boardsResult.values.find(b => b.id === boardId);
-      spinner.start('Fetching sprints...');
-    }
+    } else {
+      // Multiple boards found - require explicit board selection
+      spinner.stop();
 
-    await listSprintsByBoard(client, io, selectedBoard.id, activeOnly, selectedBoard.name, stateFilter);
-    spinner.stop();
+      io.out(chalk.bold('\nMultiple boards found:\n'));
+      boardsResult.values.forEach(board => {
+        io.out(`  ${chalk.cyan(board.id.toString().padEnd(6))} ${board.name} (${board.type})`);
+      });
+      io.out('\n' + chalk.yellow('Please specify a board using --board <ID>'));
+      io.out('Example: jira sprint list --board ' + boardsResult.values[0].id + '\n');
+
+      throw new Error('Board ID required when multiple boards exist');
+    }
 
   } catch (err) {
     spinner.stop();

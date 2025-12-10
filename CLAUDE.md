@@ -3,6 +3,13 @@
 ## Project Overview
 Modern, extensible JIRA command-line interface built with Factory pattern and Commander.js. Provides full CRUD operations for issues, projects, and sprints with beautiful terminal UX.
 
+## CLI Design Philosophy
+- **Non-Interactive**: All commands require explicit CLI arguments for full automation support
+- **Scriptable**: Designed for CI/CD pipelines and shell scripts
+- **No Prompts**: All input via flags or environment variables, no interactive prompts
+- **Description Files**: Use `--description-file` for multi-line content
+- **Explicit Validation**: Clear error messages with usage examples when options missing
+
 ## Architecture
 
 ### Design Patterns
@@ -18,7 +25,6 @@ jira-cli/
 │   ├── root.js               # Root command setup
 │   └── commands/             # Command implementations
 │       ├── config.js         # Configuration management
-│       ├── init.js           # Interactive setup
 │       ├── issue.js          # Issue CRUD operations
 │       ├── project.js        # Project operations
 │       └── sprint.js         # Sprint management
@@ -35,7 +41,6 @@ jira-cli/
 ### Key Dependencies
 - **commander**: CLI framework
 - **axios**: HTTP client for JIRA API
-- **inquirer**: Interactive prompts
 - **chalk**: Terminal colors
 - **ora**: Spinners and progress indicators
 - **cli-table3**: Formatted table output
@@ -64,9 +69,16 @@ jira-cli/
 
 ### Configuration
 - Config stored via `conf` package (platform-specific locations)
-- Support both environment variables and interactive setup
+- Support environment variables and CLI flags (no interactive setup)
 - Environment variables: `JIRA_HOST`, `JIRA_API_TOKEN`, `JIRA_USERNAME`
 - Legacy support: `JIRA_DOMAIN`, `JIRA_USERNAME`, `JIRA_API_TOKEN`
+- CLI flags: `jira config --server <url> --username <email> --token <token>`
+
+### Issue Management Patterns
+- **Create**: Require `--project`, `--type`, `--summary` flags
+- **Update**: Require at least one field flag
+- **Delete**: Require `--force` flag (no confirmation prompt)
+- **Description Files**: Support `--description-file <path>` for multi-line content
 
 ## Testing
 
@@ -86,7 +98,7 @@ npm run test:coverage   # Coverage report
 ### Writing Tests
 - Place tests in `tests/` directory mirroring source structure
 - Use descriptive test names
-- Mock external dependencies (axios, inquirer)
+- Mock external dependencies (axios)
 - Test both success and error cases
 
 ## Release Process
@@ -122,8 +134,8 @@ See AGENTS.md for emergency release procedures if automation fails.
 - Use `chalk` for colored output
 - Use `ora` for loading indicators
 - Use `cli-table3` for tabular data
-- Use `inquirer` for interactive prompts
 - Provide clear error messages with actionable guidance
+- Show usage examples in error messages when required options missing
 
 ### Debugging
 ```bash
