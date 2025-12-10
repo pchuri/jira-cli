@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/pchuri/jira-cli/compare/v2.0.0...v2.1.0) (2025-12-10)
+
+
+### Features
+
+* make username optional for Bearer token authentication ([#12](https://github.com/pchuri/jira-cli/issues/12)) ([d9762ad](https://github.com/pchuri/jira-cli/commit/d9762ad19804d50039a2d7f6a8a63d47f609bd81))
+
 # [2.0.0](https://github.com/pchuri/jira-cli/compare/v1.1.1...v2.0.0) (2025-12-10)
 
 
