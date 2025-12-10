@@ -91,16 +91,64 @@ describe('Utils', () => {
       ];
 
       const table = Utils.createIssuesTable(mockIssues);
-      
+
       expect(table).toBeDefined();
       expect(typeof table.toString).toBe('function');
     });
 
     it('should handle empty issues array', () => {
       const table = Utils.createIssuesTable([]);
-      
+
       expect(table).toBeDefined();
       expect(typeof table.toString).toBe('function');
+    });
+  });
+
+  describe('buildJQL', () => {
+    it('should build JQL with project filter', () => {
+      const options = { project: 'TEST' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('project = "TEST"');
+    });
+
+    it('should build JQL with currentUser assignee', () => {
+      const options = { assignee: 'currentUser' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('assignee = currentUser()');
+    });
+
+    it('should build JQL with specific user assignee', () => {
+      const options = { assignee: 'john.doe' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('assignee = "john.doe"');
+    });
+
+    it('should build JQL with status filter', () => {
+      const options = { status: 'In Progress' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('status = "In Progress"');
+    });
+
+    it('should build JQL with multiple filters', () => {
+      const options = {
+        project: 'TEST',
+        assignee: 'currentUser',
+        status: 'Open'
+      };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('project = "TEST" AND assignee = currentUser() AND status = "Open"');
+    });
+
+    it('should return default ORDER BY when no filters', () => {
+      const options = {};
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('ORDER BY updated DESC');
     });
   });
 });
