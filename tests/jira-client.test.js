@@ -28,6 +28,49 @@ describe('JiraClient', () => {
     test('should set up axios client with correct base URL', () => {
       expect(client.client.defaults.baseURL).toBe(`${mockConfig.server}/rest/api/2`);
     });
+
+    test('should create client with Bearer auth when username is empty', () => {
+      const bearerConfig = {
+        server: 'https://test.atlassian.net',
+        username: '',
+        token: 'test-token'
+      };
+
+      const bearerClient = new JiraClient(bearerConfig);
+
+      expect(bearerClient.config).toEqual(bearerConfig);
+      expect(bearerClient.baseURL).toBe(bearerConfig.server);
+      expect(bearerClient.client.defaults.auth).toBeNull();
+      expect(bearerClient.client.defaults.headers['Authorization']).toBe('Bearer test-token');
+    });
+
+    test('should create client with Bearer auth when username is missing', () => {
+      const bearerConfig = {
+        server: 'https://test.atlassian.net',
+        token: 'test-token'
+      };
+
+      const bearerClient = new JiraClient(bearerConfig);
+
+      expect(bearerClient.client.defaults.auth).toBeNull();
+      expect(bearerClient.client.defaults.headers['Authorization']).toBe('Bearer test-token');
+    });
+
+    test('should create client with Basic auth when username is provided', () => {
+      const basicConfig = {
+        server: 'https://test.atlassian.net',
+        username: 'test@example.com',
+        token: 'test-token'
+      };
+
+      const basicClient = new JiraClient(basicConfig);
+
+      expect(basicClient.client.defaults.auth).toEqual({
+        username: basicConfig.username,
+        password: basicConfig.token
+      });
+      expect(basicClient.client.defaults.headers['Authorization']).toBeUndefined();
+    });
   });
 
   describe('API methods', () => {

@@ -55,16 +55,17 @@ function createConfigCommand(factory) {
           // No options provided - show usage
           throw new Error(
             'Configuration requires explicit options.\n\n' +
-            'Set configuration using:\n' +
+            'Bearer authentication (recommended):\n' +
+            '  jira config --server <url> --token <token>\n\n' +
+            'Basic authentication (optional):\n' +
             '  jira config --server <url> --username <email> --token <token>\n\n' +
             'Or set using individual commands:\n' +
             '  jira config set server <url>\n' +
-            '  jira config set username <email>\n' +
-            '  jira config set token <token>\n\n' +
+            '  jira config set token <token>\n' +
+            '  jira config set username <email>  # optional for Basic auth\n\n' +
             'Or use environment variables:\n' +
-            '  export JIRA_HOST=your-jira-instance.atlassian.net\n' +
-            '  export JIRA_API_TOKEN=your-api-token\n' +
-            '  export JIRA_USERNAME=your-email@company.com'
+            '  Bearer auth: export JIRA_HOST=<url> JIRA_API_TOKEN=<token>\n' +
+            '  Basic auth: export JIRA_HOST=<url> JIRA_API_TOKEN=<token> JIRA_USERNAME=<email>'
           );
         }
 
