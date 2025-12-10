@@ -11,46 +11,7 @@ const path = require('path');
 function createIssueCommand(factory) {
   const command = new Command('issue')
     .description('Manage JIRA issues')
-    .alias('i')
-    .option('-l, --list', 'list issues')
-    .option('-c, --create', 'create a new issue')
-    .option('-g, --get <key>', 'get issue by key')
-    .option('-u, --update <key>', 'update issue by key')
-    .option('-d, --delete <key>', 'delete issue by key')
-    .option('--project <project>', 'filter by project')
-    .option('--assignee <assignee>', 'filter by assignee')
-    .option('--status <status>', 'filter by status')
-    .option('--type <type>', 'filter by issue type')
-    .option('--summary <summary>', 'issue summary (for create/update)')
-    .option('--description <description>', 'issue description (for create/update)')
-    .option('--priority <priority>', 'priority (for create/update)')
-    .option('--limit <limit>', 'limit number of results', '20')
-    .action(async (options) => {
-      const io = factory.getIOStreams();
-      const client = await factory.getJiraClient();
-      const analytics = factory.getAnalytics();
-
-      try {
-        await analytics.track('issue', { action: getIssueAction(options) });
-
-        if (options.create) {
-          await createIssue(client, io, factory, options);
-        } else if (options.get) {
-          await getIssue(client, io, options.get);
-        } else if (options.update) {
-          await updateIssue(client, io, options.update, options);
-        } else if (options.delete) {
-          await deleteIssue(client, io, options.delete, options);
-        } else {
-          // Default to list issues
-          await listIssues(client, io, options);
-        }
-
-      } catch (err) {
-        io.error(`Issue command failed: ${err.message}`);
-        process.exit(1);
-      }
-    });
+    .alias('i');
 
   // Add subcommands
   command
@@ -75,7 +36,7 @@ function createIssueCommand(factory) {
     .action(async (options) => {
       const io = factory.getIOStreams();
       const client = await factory.getJiraClient();
-      
+
       try {
         await listIssues(client, io, options);
       } catch (err) {
@@ -397,14 +358,6 @@ async function deleteIssue(client, io, issueKey, options = {}) {
   deleteSpinner.stop();
 
   io.success(`Issue ${issueKey} deleted successfully`);
-}
-
-function getIssueAction(options) {
-  if (options.create) return 'create';
-  if (options.get) return 'get';
-  if (options.update) return 'update';
-  if (options.delete) return 'delete';
-  return 'list';
 }
 
 module.exports = createIssueCommand;
