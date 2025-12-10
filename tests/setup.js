@@ -7,11 +7,6 @@ global.console = {
   error: jest.fn()
 };
 
-// Mock inquirer for tests
-jest.mock('inquirer', () => ({
-  prompt: jest.fn()
-}));
-
 // Mock conf for tests
 jest.mock('conf', () => {
   return class MockConf {

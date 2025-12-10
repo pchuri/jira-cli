@@ -1,11 +1,12 @@
 const { Command } = require('commander');
-const { 
-  createIssuesTable, 
-  displayIssueDetails, 
-  buildJQL 
+const {
+  createIssuesTable,
+  displayIssueDetails,
+  buildJQL
 } = require('../../lib/utils');
 const chalk = require('chalk');
-const inquirer = require('inquirer');
+const fs = require('fs');
+const path = require('path');
 
 function createIssueCommand(factory) {
   const command = new Command('issue')
@@ -103,18 +104,22 @@ function createIssueCommand(factory) {
     .command('create')
     .description('create a new issue\n\n' +
       'Examples:\n' +
-      '  $ jira issue create                                    # Interactive mode\n' +
+      '  $ jira issue create --project=TEST --type=Bug --summary="Login fails"\n' +
       '  $ jira issue create --project=TEST --type=Bug \\\n' +
       '                      --summary="Login fails on Safari"\n' +
       '  $ jira issue create --project=PROJ --type=Story \\\n' +
       '                      --summary="Add user profile page" \\\n' +
       '                      --description="Users need a profile page to manage settings" \\\n' +
-      '                      --assignee=john.doe --priority=High')
+      '                      --assignee=john.doe --priority=High\n' +
+      '  $ jira issue create --project=PROJ --type=Story \\\n' +
+      '                      --summary="Add feature" \\\n' +
+      '                      --description-file=./feature-spec.md')
     .alias('new')
     .option('--project <project>', 'project key (e.g., TEST, PROJ)')
     .option('--type <type>', 'issue type (e.g., Bug, Story, Task)')
     .option('--summary <summary>', 'issue summary (required)')
     .option('--description <description>', 'issue description (optional)')
+    .option('--description-file <path>', 'read description from file (optional)')
     .option('--assignee <assignee>', 'assignee username')
     .option('--priority <priority>', 'priority (e.g., High, Medium, Low)')
     .action(async (options) => {
@@ -135,6 +140,7 @@ function createIssueCommand(factory) {
     .alias('update')
     .option('--summary <summary>', 'new summary')
     .option('--description <description>', 'new description')
+    .option('--description-file <path>', 'read description from file')
     .option('--assignee <assignee>', 'new assignee')
     .option('--priority <priority>', 'new priority')
     .action(async (key, options) => {
@@ -167,6 +173,26 @@ function createIssueCommand(factory) {
     });
 
   return command;
+}
+
+function readDescriptionFile(filePath) {
+  const absolutePath = path.resolve(filePath);
+
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(`Description file not found: ${absolutePath}`);
+  }
+
+  const stats = fs.statSync(absolutePath);
+  if (!stats.isFile()) {
+    throw new Error(`Path is not a file: ${absolutePath}`);
+  }
+
+  const content = fs.readFileSync(absolutePath, 'utf8');
+  if (!content.trim()) {
+    throw new Error(`Description file is empty: ${absolutePath}`);
+  }
+
+  return content;
 }
 
 async function listIssues(client, io, options) {
@@ -218,91 +244,82 @@ async function getIssue(client, io, issueKey) {
 
 async function createIssue(client, io, factory, options = {}) {
   const config = factory.getConfig();
-  
-  // If options provided, use them directly
-  if (options.project && options.type && options.summary) {
-    const issueData = {
-      fields: {
-        project: { key: options.project },
-        issuetype: { name: options.type },
-        summary: options.summary,
-        description: options.description || ''
-      }
-    };
 
-    if (options.assignee) {
-      issueData.fields.assignee = { name: options.assignee };
-    }
-
-    if (options.priority) {
-      issueData.fields.priority = { name: options.priority };
-    }
-
-    const spinner = io.spinner('Creating issue...');
-    const result = await client.createIssue(issueData);
-    spinner.stop();
-
-    io.success(`Issue created: ${result.key}`);
-    io.out(`URL: ${config.get('server')}/browse/${result.key}`);
-    return;
+  // Validate required options
+  if (!options.project || !options.type || !options.summary) {
+    throw new Error(
+      'Missing required options for creating an issue.\n\n' +
+      'Usage: jira issue create --project <KEY> --type <TYPE> --summary <TEXT>\n\n' +
+      'Required options:\n' +
+      '  --project <KEY>         Project key (e.g., TEST, PROJ)\n' +
+      '  --type <TYPE>           Issue type (e.g., Bug, Story, Task)\n' +
+      '  --summary <TEXT>        Issue summary\n\n' +
+      'Optional:\n' +
+      '  --description <TEXT>    Issue description\n' +
+      '  --description-file <PATH>  Read description from file\n' +
+      '  --assignee <USER>       Assignee username\n' +
+      '  --priority <PRIORITY>   Priority level\n\n' +
+      'Example:\n' +
+      '  jira issue create --project TEST --type Bug --summary "Login fails"'
+    );
   }
 
-  // Interactive form
-  const spinner = io.spinner('Loading form data...');
-  
-  const [projects, issueTypes] = await Promise.all([
-    client.getProjects(),
-    client.getIssueTypes()
-  ]);
-  
-  spinner.stop();
+  // Handle description from file or text
+  let description = '';
+  if (options.description && options.descriptionFile) {
+    throw new Error('Cannot use both --description and --description-file. Please use only one.');
+  }
 
-  const questions = [
-    {
-      type: 'list',
-      name: 'project',
-      message: 'Select project:',
-      choices: projects.map(p => ({ name: `${p.key} - ${p.name}`, value: p.key }))
-    },
-    {
-      type: 'list',
-      name: 'issueType',
-      message: 'Select issue type:',
-      choices: issueTypes.map(t => ({ name: t.name, value: t.id }))
-    },
-    {
-      type: 'input',
-      name: 'summary',
-      message: 'Issue summary:',
-      validate: input => input ? true : 'Summary is required'
-    },
-    {
-      type: 'editor',
-      name: 'description',
-      message: 'Issue description (optional):'
-    }
-  ];
-
-  const answers = await inquirer.prompt(questions);
+  if (options.descriptionFile) {
+    description = readDescriptionFile(options.descriptionFile);
+  } else if (options.description) {
+    description = options.description;
+  }
 
   const issueData = {
     fields: {
-      project: { key: answers.project },
-      issuetype: { id: answers.issueType },
-      summary: answers.summary,
-      description: answers.description || ''
+      project: { key: options.project },
+      issuetype: { name: options.type },
+      summary: options.summary,
+      description: description
     }
   };
 
-  const createSpinner = io.spinner('Creating issue...');
+  if (options.assignee) {
+    issueData.fields.assignee = { name: options.assignee };
+  }
+
+  if (options.priority) {
+    issueData.fields.priority = { name: options.priority };
+  }
+
+  const spinner = io.spinner('Creating issue...');
   const result = await client.createIssue(issueData);
-  createSpinner.stop();
+  spinner.stop();
 
   io.success(`Issue created: ${result.key}`);
   io.out(`URL: ${config.get('server')}/browse/${result.key}`);
 }
 
 async function updateIssue(client, io, issueKey, options = {}) {
+  // Validate at least one option provided
+  if (!options.summary && !options.description && !options.descriptionFile &&
+      !options.assignee && !options.priority) {
+    throw new Error(
+      'At least one field must be specified for update.\n\n' +
+      'Usage: jira issue edit <KEY> [options]\n\n' +
+      'Available options:\n' +
+      '  --summary <TEXT>          New summary\n' +
+      '  --description <TEXT>      New description\n' +
+      '  --description-file <PATH> Read description from file\n' +
+      '  --assignee <USER>         New assignee\n' +
+      '  --priority <PRIORITY>     New priority\n\n' +
+      'Example:\n' +
+      '  jira issue edit PROJ-123 --summary "Updated summary"\n' +
+      '  jira issue edit PROJ-123 --description-file ./updated-spec.md'
+    );
+  }
+
   // Get current issue
   const spinner = io.spinner(`Loading issue ${issueKey}...`);
   const issue = await client.getIssue(issueKey);
@@ -314,55 +331,35 @@ async function updateIssue(client, io, issueKey, options = {}) {
   const updateData = { fields: {} };
   let hasChanges = false;
 
-  // If options provided, use them directly
-  if (options.summary || options.description || options.assignee || options.priority) {
-    if (options.summary && options.summary !== issue.fields.summary) {
-      updateData.fields.summary = options.summary;
+  if (options.summary && options.summary !== issue.fields.summary) {
+    updateData.fields.summary = options.summary;
+    hasChanges = true;
+  }
+
+  // Handle description from file or text
+  if (options.description && options.descriptionFile) {
+    throw new Error('Cannot use both --description and --description-file. Please use only one.');
+  }
+
+  if (options.descriptionFile) {
+    const description = readDescriptionFile(options.descriptionFile);
+    if (description !== (issue.fields.description || '')) {
+      updateData.fields.description = description;
       hasChanges = true;
     }
+  } else if (options.description && options.description !== (issue.fields.description || '')) {
+    updateData.fields.description = options.description;
+    hasChanges = true;
+  }
 
-    if (options.description && options.description !== (issue.fields.description || '')) {
-      updateData.fields.description = options.description;
-      hasChanges = true;
-    }
+  if (options.assignee) {
+    updateData.fields.assignee = { name: options.assignee };
+    hasChanges = true;
+  }
 
-    if (options.assignee) {
-      updateData.fields.assignee = { name: options.assignee };
-      hasChanges = true;
-    }
-
-    if (options.priority) {
-      updateData.fields.priority = { name: options.priority };
-      hasChanges = true;
-    }
-  } else {
-    // Interactive update
-    const questions = [
-      {
-        type: 'input',
-        name: 'summary',
-        message: 'New summary (leave empty to keep current):',
-        default: issue.fields.summary
-      },
-      {
-        type: 'editor',
-        name: 'description',
-        message: 'New description (leave empty to keep current):',
-        default: issue.fields.description || ''
-      }
-    ];
-
-    const answers = await inquirer.prompt(questions);
-
-    if (answers.summary && answers.summary !== issue.fields.summary) {
-      updateData.fields.summary = answers.summary;
-      hasChanges = true;
-    }
-
-    if (answers.description && answers.description !== (issue.fields.description || '')) {
-      updateData.fields.description = answers.description;
-      hasChanges = true;
-    }
+  if (options.priority) {
+    updateData.fields.priority = { name: options.priority };
+    hasChanges = true;
   }
 
   if (!hasChanges) {
@@ -383,26 +380,16 @@ async function deleteIssue(client, io, issueKey, options = {}) {
   const issue = await client.getIssue(issueKey);
   spinner.stop();
 
-  io.out(chalk.bold(`\nIssue to delete: ${issue.key}`));
-  io.out(`Summary: ${issue.fields.summary}\n`);
+  io.out(chalk.bold.red('\nWARNING: You are about to delete this issue:'));
+  io.out(`  Key: ${chalk.cyan(issue.key)}`);
+  io.out(`  Summary: ${issue.fields.summary}`);
+  io.out(`  Type: ${issue.fields.issuetype.name}\n`);
 
-  let confirmed = options.force;
-
-  if (!confirmed) {
-    const { confirm } = await inquirer.prompt([
-      {
-        type: 'confirm',
-        name: 'confirm',
-        message: chalk.red('Are you sure you want to delete this issue? This action cannot be undone.'),
-        default: false
-      }
-    ]);
-    confirmed = confirm;
-  }
-
-  if (!confirmed) {
-    io.info('Delete cancelled');
-    return;
+  if (!options.force) {
+    throw new Error(
+      'Deletion requires --force flag to confirm.\n' +
+      `Use: jira issue delete ${issueKey} --force`
+    );
   }
 
   const deleteSpinner = io.spinner('Deleting issue...');

@@ -7,9 +7,9 @@ A modern, extensible command-line interface for Atlassian JIRA built with Factor
 - 📋 **Issue Management**: Create, read, update, and delete JIRA issues with full CRUD operations
 - 📊 **Project Information**: View project details, statistics, and team insights
 - 🏃 **Sprint Management**: Monitor sprint progress, burndown charts, and team velocity
-- ⚙️ **Smart Configuration**: Environment variables, interactive setup, and credential management
+- ⚙️ **Smart Configuration**: Environment variables and CLI options for flexible setup
 - 📈 **Advanced Analytics**: Get insights into project health, user workload, and performance metrics
-- 🔄 **Interactive Commands**: User-friendly prompts with validation and auto-completion
+- 🤖 **Automation-Friendly**: Fully scriptable, non-interactive mode for CI/CD pipelines
 - 🎨 **Beautiful Output**: Formatted tables, colored output, and progress indicators
 - 🔍 **Powerful Search**: Filter issues with JQL-like queries and advanced search options
 - 🏗️ **Modern Architecture**: Factory pattern, dependency injection, and extensible command structure
@@ -35,9 +35,11 @@ npm link
 
 ### Setup
 
-1. **Initialize configuration (interactive setup):**
+1. **Configure using CLI options:**
    ```bash
-   jira init
+   jira config --server https://your-jira-instance.atlassian.net \
+               --username your-email@company.com \
+               --token your-api-token
    ```
 
 2. **Or use environment variables:**
@@ -50,25 +52,36 @@ npm link
 3. **Verify connection:**
    ```bash
    jira config --show
-   jira issue --get PROJ-123
+   jira issue view PROJ-123
    ```
 
 4. **Create a new issue:**
    ```bash
-   jira issue create
+   jira issue create --project PROJ --type Bug --summary "Login fails"
    ```
 
 5. **View project information:**
    ```bash
-   jira project --list
+   jira project list
    ```
 
 ## Configuration
 
-### Option 1: Interactive Setup
+### Option 1: Command Line Configuration
 
 ```bash
-jira init
+# Set all values at once
+jira config --server https://yourcompany.atlassian.net \
+            --username your-email@company.com \
+            --token your-api-token
+
+# Or set individual values
+jira config set server https://yourcompany.atlassian.net
+jira config set username your-email@company.com
+jira config set token your-api-token
+
+# Show current configuration
+jira config --show
 ```
 
 ### Option 2: Environment Variables
@@ -87,18 +100,6 @@ export JIRA_USERNAME="your-email@company.com"    # optional when using JIRA_HOST
 export JIRA_DOMAIN="your-domain.atlassian.net"
 export JIRA_USERNAME="your-email@company.com"
 export JIRA_API_TOKEN="your-api-token"
-```
-
-### Option 3: Command Line Configuration
-
-```bash
-# Set individual values
-jira config --server https://yourcompany.atlassian.net
-jira config --username your-email@company.com
-jira config --token your-api-token
-
-# Show current configuration
-jira config --show
 ```
 
 ### Getting Your API Token
@@ -145,24 +146,35 @@ jira issue --list --project PROJ --assignee john.doe --status "To Do"
 ### Create a New Issue
 
 ```bash
-# Create with interactive prompts
-jira issue create
+# Create with required flags
+jira issue create --project PROJ --type Bug --summary "Bug in login"
 
-# Create with inline flags
+# With description
 jira issue create --project PROJ --type Bug --summary "Bug in login" --description "User cannot login"
+
+# With description from file
+jira issue create --project PROJ --type Story --summary "Add feature" --description-file ./feature-spec.md
+
+# With all options
+jira issue create --project PROJ --type Bug --summary "Critical bug" \
+                  --description "Details here" \
+                  --assignee john.doe --priority High
 ```
 
 ### Update an Existing Issue
 
 ```bash
-# Update with interactive prompts
-jira issue edit PROJ-123
+# Update summary
+jira issue edit PROJ-123 --summary "Updated summary"
 
 # Update specific fields
-jira issue edit PROJ-123 --status "In Progress" --assignee john.doe
+jira issue edit PROJ-123 --assignee john.doe --priority High
 
 # Update description
 jira issue edit PROJ-123 --description "Updated description"
+
+# Update description from file
+jira issue edit PROJ-123 --description-file ./updated-spec.md
 ```
 
 ### Search Issues
@@ -190,35 +202,37 @@ jira project view PROJ
 ### Sprint Management
 
 ```bash
-# List sprints (will prompt for board selection)
-jira sprint list
+# List available boards first
+jira sprint boards
 
-# List sprints for specific board
+# List sprints for specific board (required when multiple boards exist)
 jira sprint list --board 123
 
 # Show only active sprints
-jira sprint active
+jira sprint active --board 123
 
-# List available boards
-jira sprint boards
+# Filter by state
+jira sprint list --board 123 --state active
 ```
 
 ## Commands
 
 | Command | Description | Options |
 |---------|-------------|---------|
-| `init` | Initialize CLI configuration | - |
+| `config --server <url> --username <email> --token <token>` | Configure CLI | All three options required, or use `config set` |
+| `config --show` | Show current configuration | - |
+| `config set <key> <value>` | Set individual config value | - |
 | `issue get <key>` | Get issue details | `--format <json\|table>`, `--verbose` |
 | `issue list` | List issues | `--project <key>`, `--assignee <user>`, `--status <status>`, `--jql <query>`, `--limit <number>` |
-| `issue create` | Create new issue | `--project <key>`, `--type <type>`, `--summary <text>`, `--description <text>`, `--assignee <user>`, `--priority <level>` |
-| `issue edit <key>` | Edit an existing issue (alias: update) | `--summary <text>`, `--description <text>`, `--assignee <user>`, `--priority <level>` |
-| `issue delete <key>` | Delete issue | `--force` |
+| `issue create` | Create new issue | **Required:** `--project <key>`, `--type <type>`, `--summary <text>`<br>**Optional:** `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
+| `issue edit <key>` | Edit an existing issue (alias: update) | **At least one required:**<br>`--summary <text>`, `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
+| `issue delete <key>` | Delete issue | **Required:** `--force` |
 | `project list` | List all projects | `--type <type>`, `--category <category>` |
 | `project view <key>` | View project details | - |
 | `project components <key>` | List project components | - |
 | `project versions <key>` | List project versions | - |
-| `sprint list` | List sprints | `--board <id>`, `--state <state>`, `--active` |
-| `sprint active` | List active sprints | `--board <id>` |
+| `sprint list` | List sprints | `--board <id>` (required when multiple boards), `--state <state>`, `--active` |
+| `sprint active` | List active sprints | `--board <id>` (required when multiple boards) |
 | `sprint boards` | List available boards | - |
 
 ## Configuration File
@@ -233,37 +247,44 @@ Configuration is stored using the `conf` package in your system's config directo
 
 ```bash
 # Setup
-jira init
+jira config --server https://jira.company.com \
+            --username user@company.com \
+            --token your-api-token
 
 # Read an issue
-jira issue --get PROJ-123
+jira issue view PROJ-123
 
 # Read an issue with full details
-jira issue --get PROJ-123 --verbose
+jira issue view PROJ-123 --verbose
 
 # Get issue in JSON format
-jira issue --get PROJ-123 --format json
+jira issue view PROJ-123 --format json
 
 # List issues with filters
-jira issue --list --project PROJ --status "In Progress" --limit 10
-
-# Search with limit
-jira search "API documentation" --limit 5
+jira issue list --project PROJ --status "In Progress" --limit 10
 
 # Create new issue
-jira issue --create
+jira issue create --project PROJ --type Bug --summary "Login fails"
 
-# Update issue status
-jira issue --update PROJ-123
+# Create issue with description file
+jira issue create --project PROJ --type Story \
+                  --summary "Add feature" \
+                  --description-file ./feature-spec.md
+
+# Update issue
+jira issue edit PROJ-123 --summary "Updated summary"
+
+# Delete issue (requires --force)
+jira issue delete PROJ-123 --force
 
 # List all projects
-jira project --list
+jira project list
 
-# Get project statistics
-jira stats --project PROJ
+# Show available boards
+jira sprint boards
 
 # Show active sprints
-jira sprint --active
+jira sprint active --board 123
 ```
 
 ## Development
@@ -323,7 +344,8 @@ The CLI provides clear error messages for common issues:
 ### Common Issues
 
 1. **"JIRA CLI is not configured"**
-   - Run `jira init` to set up your connection
+   - Run `jira config --server <url> --username <email> --token <token>` to set up your connection
+   - Or set environment variables (JIRA_HOST, JIRA_API_TOKEN, JIRA_USERNAME)
 
 2. **"Authentication failed"**
    - Verify your username and API token with `jira config --show`
@@ -411,9 +433,9 @@ This project is licensed under the ISC License - see the [LICENSE](https://githu
 ## Roadmap
 
 - [x] Basic issue management (create, read, update, delete)
-- [x] Project and sprint management  
+- [x] Project and sprint management
 - [x] Configuration management
-- [x] Interactive commands
+- [x] Non-interactive, automation-friendly CLI
 - [x] Analytics and reporting
 - [ ] Issue templates
 - [ ] Bulk operations

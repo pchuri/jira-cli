@@ -7,7 +7,6 @@ const { Command } = require('commander');
 
 // Import command modules
 const createConfigCommand = require('./commands/config');
-const createInitCommand = require('./commands/init');
 const createIssueCommand = require('./commands/issue');
 const createProjectCommand = require('./commands/project');
 const createSprintCommand = require('./commands/sprint');
@@ -27,10 +26,10 @@ async function createRootCommand(factory, version) {
     .name('jira')
     .description('Work seamlessly with JIRA from the command line\n\n' +
       'Quick Start:\n' +
-      '  $ jira init                    # Setup JIRA CLI (run this first)\n' +
-      '  $ jira issue create            # Create a new issue interactively\n' +
-      '  $ jira issue list              # List your issues\n' +
-      '  $ jira project list            # List available projects\n\n' +
+      '  $ jira config --server <url> --username <email> --token <token>  # Setup JIRA CLI (run this first)\n' +
+      '  $ jira issue create --project=TEST --type=Bug --summary="Fix"     # Create a new issue\n' +
+      '  $ jira issue list                                                  # List your issues\n' +
+      '  $ jira project list                                                # List available projects\n\n' +
       'Examples:\n' +
       '  $ jira issue create --project=TEST --type=Bug --summary="Fix login error"\n' +
       '  $ jira issue list --assignee=currentUser --status=Open\n' +
@@ -50,7 +49,6 @@ async function createRootCommand(factory, version) {
   // Core commands group (alphabetically ordered for better UX)
   const coreCommands = [
     createConfigCommand(factory),
-    createInitCommand(factory),  // Setup command - should be prominent
     createIssueCommand(factory),
     createProjectCommand(factory),
     createSprintCommand(factory)

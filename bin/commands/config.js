@@ -43,7 +43,7 @@ function createConfigCommand(factory) {
           if (config.isConfigured()) {
             io.info('Testing connection...');
             const testResult = await config.testConfig();
-            
+
             if (testResult.success) {
               io.success('Connection successful!');
               io.out(`Welcome, ${testResult.user.displayName}!`);
@@ -52,8 +52,20 @@ function createConfigCommand(factory) {
             }
           }
         } else {
-          // Interactive setup
-          await config.interactiveSetup();
+          // No options provided - show usage
+          throw new Error(
+            'Configuration requires explicit options.\n\n' +
+            'Set configuration using:\n' +
+            '  jira config --server <url> --username <email> --token <token>\n\n' +
+            'Or set using individual commands:\n' +
+            '  jira config set server <url>\n' +
+            '  jira config set username <email>\n' +
+            '  jira config set token <token>\n\n' +
+            'Or use environment variables:\n' +
+            '  export JIRA_HOST=your-jira-instance.atlassian.net\n' +
+            '  export JIRA_API_TOKEN=your-api-token\n' +
+            '  export JIRA_USERNAME=your-email@company.com'
+          );
         }
 
       } catch (err) {
