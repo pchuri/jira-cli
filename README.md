@@ -35,21 +35,32 @@ npm link
 
 ### Setup
 
-1. **Configure using CLI options:**
+1. **Configure using CLI options (Bearer auth - recommended):**
+   ```bash
+   jira config --server https://your-jira-instance.atlassian.net \
+               --token your-api-token
+   ```
+
+2. **Or with username for Basic authentication:**
    ```bash
    jira config --server https://your-jira-instance.atlassian.net \
                --username your-email@company.com \
                --token your-api-token
    ```
 
-2. **Or use environment variables:**
+3. **Or use environment variables:**
    ```bash
+   # Bearer authentication (recommended)
    export JIRA_HOST=your-jira-instance.atlassian.net
    export JIRA_API_TOKEN=your-api-token
-   export JIRA_USERNAME=your-email@company.com    # optional, for user-specific actions
+
+   # Basic authentication (optional)
+   export JIRA_HOST=your-jira-instance.atlassian.net
+   export JIRA_API_TOKEN=your-api-token
+   export JIRA_USERNAME=your-email@company.com
    ```
 
-3. **Verify connection:**
+4. **Verify connection:**
    ```bash
    jira config --show
    jira issue view PROJ-123
@@ -67,18 +78,27 @@ npm link
 
 ## Configuration
 
+JIRA CLI supports two authentication modes:
+
+1. **Bearer Token Authentication (Recommended)** - Uses API token directly
+2. **Basic Authentication** - Uses username + API token (legacy)
+
 ### Option 1: Command Line Configuration
 
 ```bash
-# Set all values at once
+# Bearer authentication (server + token only)
+jira config --server https://yourcompany.atlassian.net \
+            --token your-api-token
+
+# Basic authentication (with username)
 jira config --server https://yourcompany.atlassian.net \
             --username your-email@company.com \
             --token your-api-token
 
 # Or set individual values
 jira config set server https://yourcompany.atlassian.net
-jira config set username your-email@company.com
 jira config set token your-api-token
+jira config set username your-email@company.com  # optional
 
 # Show current configuration
 jira config --show
@@ -90,9 +110,14 @@ You can configure the CLI using environment variables in either a new or legacy 
 
 #### New format (JIRA_HOST)
 ```bash
+# Bearer authentication
 export JIRA_HOST="your-jira-instance.atlassian.net"
 export JIRA_API_TOKEN="your-api-token"
-export JIRA_USERNAME="your-email@company.com"    # optional when using JIRA_HOST
+
+# Basic authentication (add username)
+export JIRA_HOST="your-jira-instance.atlassian.net"
+export JIRA_API_TOKEN="your-api-token"
+export JIRA_USERNAME="your-email@company.com"
 ```
 
 #### Legacy format (JIRA_DOMAIN)
@@ -219,7 +244,7 @@ jira sprint list --board 123 --state active
 
 | Command | Description | Options |
 |---------|-------------|---------|
-| `config --server <url> --username <email> --token <token>` | Configure CLI | All three options required, or use `config set` |
+| `config --server <url> --token <token>` | Configure CLI (Bearer auth) | Username optional; use `--username <email>` for Basic auth |
 | `config --show` | Show current configuration | - |
 | `config set <key> <value>` | Set individual config value | - |
 | `issue get <key>` | Get issue details | `--format <json\|table>`, `--verbose` |
@@ -246,7 +271,11 @@ Configuration is stored using the `conf` package in your system's config directo
 ## Examples
 
 ```bash
-# Setup
+# Setup (Bearer auth - recommended)
+jira config --server https://jira.company.com \
+            --token your-api-token
+
+# Setup (Basic auth with username)
 jira config --server https://jira.company.com \
             --username user@company.com \
             --token your-api-token
@@ -344,8 +373,9 @@ The CLI provides clear error messages for common issues:
 ### Common Issues
 
 1. **"JIRA CLI is not configured"**
-   - Run `jira config --server <url> --username <email> --token <token>` to set up your connection
-   - Or set environment variables (JIRA_HOST, JIRA_API_TOKEN, JIRA_USERNAME)
+   - Run `jira config --server <url> --token <token>` to set up your connection
+   - Optionally add `--username <email>` for Basic authentication
+   - Or set environment variables (JIRA_HOST + JIRA_API_TOKEN required, JIRA_USERNAME optional)
 
 2. **"Authentication failed"**
    - Verify your username and API token with `jira config --show`

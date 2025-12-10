@@ -155,11 +155,53 @@ describe('Config', () => {
       config.set('server', 'https://test.atlassian.net');
       config.set('username', 'testuser');
       config.set('token', 'testtoken');
-      
+
       const requiredConfig = config.getRequiredConfig();
       expect(requiredConfig.server).toBe('https://test.atlassian.net');
       expect(requiredConfig.username).toBe('testuser');
       expect(requiredConfig.token).toBe('testtoken');
+    });
+  });
+
+  describe('Bearer authentication support', () => {
+    it('should report as configured when server and token are set without username', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', 'testtoken');
+
+      expect(config.isConfigured()).toBe(true);
+    });
+
+    it('should get required config without username (Bearer auth)', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', 'testtoken');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.server).toBe('https://test.atlassian.net');
+      expect(requiredConfig.username).toBe('');
+      expect(requiredConfig.token).toBe('testtoken');
+    });
+
+    it('should support both auth modes in stored config', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', 'testtoken');
+      let bearerConfig = config.getRequiredConfig();
+      expect(bearerConfig.username).toBe('');
+
+      config.set('username', 'testuser');
+      let basicConfig = config.getRequiredConfig();
+      expect(basicConfig.username).toBe('testuser');
+    });
+
+    it('should switch to Bearer auth when username is deleted', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('username', 'testuser');
+      config.set('token', 'testtoken');
+
+      config.delete('username');
+
+      const bearerConfig = config.getRequiredConfig();
+      expect(bearerConfig.username).toBe('');
+      expect(config.isConfigured()).toBe(true);
     });
   });
 });
