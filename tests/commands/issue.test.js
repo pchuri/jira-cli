@@ -54,40 +54,43 @@ describe('IssueCommand', () => {
       expect(issueCommand.aliases()).toContain('i');
     });
 
-    it('should have options', () => {
-      const options = issueCommand.options;
-      expect(options.length).toBeGreaterThan(0);
+    it('should have subcommands', () => {
+      const commands = issueCommand.commands;
+      expect(commands.length).toBeGreaterThan(0);
+
+      const listCommand = commands.find(cmd => cmd.name() === 'list');
+      expect(listCommand).toBeDefined();
+
+      const createCommand = commands.find(cmd => cmd.name() === 'create');
+      expect(createCommand).toBeDefined();
+
+      const viewCommand = commands.find(cmd => cmd.name() === 'view');
+      expect(viewCommand).toBeDefined();
     });
   });
 
-  describe('command options', () => {
-    it('should have list option', () => {
-      const listOption = issueCommand.options.find(opt => opt.long === '--list');
-      expect(listOption).toBeDefined();
-      expect(listOption.short).toBe('-l');
-    });
+  describe('list subcommand options', () => {
+    let listCommand;
 
-    it('should have create option', () => {
-      const createOption = issueCommand.options.find(opt => opt.long === '--create');
-      expect(createOption).toBeDefined();
-      expect(createOption.short).toBe('-c');
-    });
-
-    it('should have get option', () => {
-      const getOption = issueCommand.options.find(opt => opt.long === '--get');
-      expect(getOption).toBeDefined();
-      expect(getOption.short).toBe('-g');
+    beforeEach(() => {
+      listCommand = issueCommand.commands.find(cmd => cmd.name() === 'list');
     });
 
     it('should have filter options', () => {
-      const projectOption = issueCommand.options.find(opt => opt.long === '--project');
+      const projectOption = listCommand.options.find(opt => opt.long === '--project');
       expect(projectOption).toBeDefined();
-      
-      const assigneeOption = issueCommand.options.find(opt => opt.long === '--assignee');
+
+      const assigneeOption = listCommand.options.find(opt => opt.long === '--assignee');
       expect(assigneeOption).toBeDefined();
-      
-      const statusOption = issueCommand.options.find(opt => opt.long === '--status');
+
+      const statusOption = listCommand.options.find(opt => opt.long === '--status');
       expect(statusOption).toBeDefined();
+    });
+
+    it('should have limit option with default value', () => {
+      const limitOption = listCommand.options.find(opt => opt.long === '--limit');
+      expect(limitOption).toBeDefined();
+      expect(limitOption.defaultValue).toBe('20');
     });
   });
 });
