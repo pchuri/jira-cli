@@ -1,3 +1,24 @@
+# [2.0.0](https://github.com/pchuri/jira-cli/compare/v1.1.1...v2.0.0) (2025-12-10)
+
+
+* feat!: remove interactive mode for full automation support (#11) ([872a39c](https://github.com/pchuri/jira-cli/commit/872a39ccb49415c62d9c970eef0597c534a2a9e6)), closes [#11](https://github.com/pchuri/jira-cli/issues/11)
+
+
+### BREAKING CHANGES
+
+* Removed all interactive prompts and inquirer dependency.
+
+- Remove 'jira init' command - use 'jira config' with explicit flags
+- Issue create/edit now require all options via CLI flags
+- Add --description-file option for multi-line descriptions
+- Issue delete requires --force flag
+- Sprint list requires --board when multiple boards exist
+- Remove inquirer dependency
+
+Migration guide added in MIGRATION.md.
+
+This change makes the CLI fully scriptable for CI/CD pipelines.
+
 ## [1.1.1](https://github.com/pchuri/jira-cli/compare/v1.1.0...v1.1.1) (2025-11-18)
 
 
