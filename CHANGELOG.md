@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/pchuri/jira-cli/compare/v2.1.0...v2.1.1) (2025-12-10)
+
+
+### Bug Fixes
+
+* handle currentUser assignee filter correctly in JQL ([#13](https://github.com/pchuri/jira-cli/issues/13)) ([91b1306](https://github.com/pchuri/jira-cli/commit/91b13061209fc4644f62c1fd43a3c3a78812a84c))
+
 # [2.1.0](https://github.com/pchuri/jira-cli/compare/v2.0.0...v2.1.0) (2025-12-10)
 
 
