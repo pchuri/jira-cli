@@ -1,3 +1,10 @@
+# [2.2.0](https://github.com/pchuri/jira-cli/compare/v2.1.2...v2.2.0) (2025-12-11)
+
+
+### Features
+
+* add markdown export support for issues ([#15](https://github.com/pchuri/jira-cli/issues/15)) ([9691ea5](https://github.com/pchuri/jira-cli/commit/9691ea5df66d7cb21ad2fe99e78fa9ee81916769))
+
 ## [2.1.2](https://github.com/pchuri/jira-cli/compare/v2.1.1...v2.1.2) (2025-12-10)
 
 
