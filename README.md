@@ -5,6 +5,7 @@ A modern, extensible command-line interface for Atlassian JIRA built with Factor
 ## ✨ Features
 
 - 📋 **Issue Management**: Create, read, update, and delete JIRA issues with full CRUD operations
+- 📝 **Markdown Support**: Export issues to markdown files and create/update issues from markdown
 - 📊 **Project Information**: View project details, statistics, and team insights
 - 🏃 **Sprint Management**: Monitor sprint progress, burndown charts, and team velocity
 - ⚙️ **Smart Configuration**: Environment variables and CLI options for flexible setup
@@ -139,14 +140,17 @@ export JIRA_API_TOKEN="your-api-token"
 ### Read an Issue
 
 ```bash
-# Read by issue key
-jira issue --get PROJ-123
+# View in terminal
+jira issue view PROJ-123
 
-# Get issue with full details
-jira issue --get PROJ-123 --verbose
+# View as markdown in terminal
+jira issue view PROJ-123 --format markdown
 
-# Get issue in JSON format
-jira issue --get PROJ-123 --format json
+# Export to markdown file
+jira issue view PROJ-123 --output ./issue.md
+
+# Export with explicit markdown format
+jira issue view PROJ-123 --format markdown --output ./issue.md
 ```
 
 ### List Issues
@@ -247,7 +251,7 @@ jira sprint list --board 123 --state active
 | `config --server <url> --token <token>` | Configure CLI (Bearer auth) | Username optional; use `--username <email>` for Basic auth |
 | `config --show` | Show current configuration | - |
 | `config set <key> <value>` | Set individual config value | - |
-| `issue get <key>` | Get issue details | `--format <json\|table>`, `--verbose` |
+| `issue view <key>` | View issue details (alias: show) | `--format <terminal\|markdown>`, `--output <path>` |
 | `issue list` | List issues | `--project <key>`, `--assignee <user>`, `--status <status>`, `--jql <query>`, `--limit <number>` |
 | `issue create` | Create new issue | **Required:** `--project <key>`, `--type <type>`, `--summary <text>`<br>**Optional:** `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
 | `issue edit <key>` | Edit an existing issue (alias: update) | **At least one required:**<br>`--summary <text>`, `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
@@ -280,14 +284,14 @@ jira config --server https://jira.company.com \
             --username user@company.com \
             --token your-api-token
 
-# Read an issue
+# View an issue in terminal
 jira issue view PROJ-123
 
-# Read an issue with full details
-jira issue view PROJ-123 --verbose
+# View as markdown in terminal
+jira issue view PROJ-123 --format markdown
 
-# Get issue in JSON format
-jira issue view PROJ-123 --format json
+# Export to markdown file
+jira issue view PROJ-123 --output ./issue.md
 
 # List issues with filters
 jira issue list --project PROJ --status "In Progress" --limit 10
@@ -467,9 +471,10 @@ This project is licensed under the ISC License - see the [LICENSE](https://githu
 - [x] Configuration management
 - [x] Non-interactive, automation-friendly CLI
 - [x] Analytics and reporting
+- [x] Export issues to markdown format
+- [x] Create/update issues from markdown files
 - [ ] Issue templates
 - [ ] Bulk operations
-- [ ] Export issues to different formats
 - [ ] Integration with other Atlassian tools
 - [ ] Issue attachments management
 - [ ] Comments and workflows
