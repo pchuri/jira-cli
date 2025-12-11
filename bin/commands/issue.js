@@ -2,6 +2,7 @@ const { Command } = require('commander');
 const {
   createIssuesTable,
   displayIssueDetails,
+  formatIssueAsMarkdown,
   buildJQL
 } = require('../../lib/utils');
 const chalk = require('chalk');
@@ -47,14 +48,21 @@ function createIssueCommand(factory) {
 
   command
     .command('view <key>')
-    .description('view issue details')
+    .description('view issue details\n\n' +
+      'Examples:\n' +
+      '  $ jira issue view PROJ-123                           # View in terminal\n' +
+      '  $ jira issue view PROJ-123 --format markdown         # View as markdown\n' +
+      '  $ jira issue view PROJ-123 --output ./issue.md       # Save to file\n' +
+      '  $ jira issue view PROJ-123 --format markdown --output ./issue.md')
     .alias('show')
-    .action(async (key) => {
+    .option('--format <format>', 'output format (terminal, markdown)', 'terminal')
+    .option('--output <path>', 'save to file instead of displaying')
+    .action(async (key, options) => {
       const io = factory.getIOStreams();
       const client = await factory.getJiraClient();
-      
+
       try {
-        await getIssue(client, io, key);
+        await getIssue(client, io, key, options);
       } catch (err) {
         io.error(`Failed to get issue: ${err.message}`);
         process.exit(1);
@@ -188,14 +196,25 @@ async function listIssues(client, io, options) {
   }
 }
 
-async function getIssue(client, io, issueKey) {
+async function getIssue(client, io, issueKey, options = {}) {
   const spinner = io.spinner(`Fetching issue ${issueKey}...`);
-  
+
   try {
     const issue = await client.getIssue(issueKey);
     spinner.stop();
-    
-    displayIssueDetails(issue);
+
+    if (options.output) {
+      const outputPath = path.resolve(options.output);
+      const content = formatIssueAsMarkdown(issue);
+
+      fs.writeFileSync(outputPath, content, 'utf8');
+      io.success(`Issue ${issueKey} saved to ${outputPath}`);
+    } else if (options.format === 'markdown') {
+      const markdown = formatIssueAsMarkdown(issue);
+      io.out('\n' + markdown);
+    } else {
+      displayIssueDetails(issue);
+    }
 
   } catch (err) {
     spinner.stop();
