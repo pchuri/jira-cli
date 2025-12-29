@@ -1,3 +1,10 @@
+# [2.3.0](https://github.com/pchuri/jira-cli/compare/v2.2.0...v2.3.0) (2025-12-29)
+
+
+### Features
+
+* add comment management commands ([#17](https://github.com/pchuri/jira-cli/issues/17)) ([822c733](https://github.com/pchuri/jira-cli/commit/822c73349f4b349a12d256b10d0217e95e9ce51d))
+
 # [2.2.0](https://github.com/pchuri/jira-cli/compare/v2.1.2...v2.2.0) (2025-12-11)
 
 
