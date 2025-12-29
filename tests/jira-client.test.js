@@ -136,6 +136,69 @@ describe('JiraClient', () => {
       expect(client.client.get).toHaveBeenCalledWith('/project');
       expect(result).toEqual(mockProjects);
     });
+
+    test('getComments should make correct API call', async () => {
+      const mockComments = { 
+        comments: [
+          { id: '10000', body: 'Test comment', author: { displayName: 'Test User' } }
+        ]
+      };
+      client.client.get.mockResolvedValue({ data: mockComments });
+
+      const result = await client.getComments('TEST-1');
+
+      expect(client.client.get).toHaveBeenCalledWith('/issue/TEST-1/comment');
+      expect(result).toEqual(mockComments);
+    });
+
+    test('addComment should make correct API call', async () => {
+      const mockComment = { id: '10001', body: 'New comment' };
+      client.client.post.mockResolvedValue({ data: mockComment });
+
+      const result = await client.addComment('TEST-1', 'New comment');
+
+      expect(client.client.post).toHaveBeenCalledWith('/issue/TEST-1/comment', {
+        body: 'New comment'
+      });
+      expect(result).toEqual(mockComment);
+    });
+
+    test('addComment with internal flag should include visibility', async () => {
+      const mockComment = { id: '10001', body: 'Internal comment' };
+      client.client.post.mockResolvedValue({ data: mockComment });
+
+      const result = await client.addComment('TEST-1', 'Internal comment', { internal: true });
+
+      expect(client.client.post).toHaveBeenCalledWith('/issue/TEST-1/comment', {
+        body: 'Internal comment',
+        visibility: {
+          type: 'role',
+          value: 'Administrators'
+        }
+      });
+      expect(result).toEqual(mockComment);
+    });
+
+    test('updateComment should make correct API call', async () => {
+      const mockComment = { id: '10000', body: 'Updated comment' };
+      client.client.put.mockResolvedValue({ data: mockComment });
+
+      const result = await client.updateComment('10000', 'Updated comment');
+
+      expect(client.client.put).toHaveBeenCalledWith('/comment/10000', {
+        body: 'Updated comment'
+      });
+      expect(result).toEqual(mockComment);
+    });
+
+    test('deleteComment should make correct API call', async () => {
+      client.client.delete.mockResolvedValue({});
+
+      const result = await client.deleteComment('10000');
+
+      expect(client.client.delete).toHaveBeenCalledWith('/comment/10000');
+      expect(result).toBe(true);
+    });
   });
 
   // Error handling tests
