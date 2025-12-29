@@ -27,6 +27,9 @@ describe('IssueCommand', () => {
       updateIssue: jest.fn(),
       assignIssue: jest.fn(),
       addComment: jest.fn(),
+      getComments: jest.fn(),
+      updateComment: jest.fn(),
+      deleteComment: jest.fn(),
       getTransitions: jest.fn(),
       transitionIssue: jest.fn()
     };
@@ -66,6 +69,46 @@ describe('IssueCommand', () => {
 
       const viewCommand = commands.find(cmd => cmd.name() === 'view');
       expect(viewCommand).toBeDefined();
+
+      const commentCommand = commands.find(cmd => cmd.name() === 'comment');
+      expect(commentCommand).toBeDefined();
+    });
+  });
+
+  describe('comment subcommand', () => {
+    let commentCommand;
+
+    beforeEach(() => {
+      commentCommand = issueCommand.commands.find(cmd => cmd.name() === 'comment');
+    });
+
+    it('should exist with correct alias', () => {
+      expect(commentCommand).toBeDefined();
+      expect(commentCommand.aliases()).toContain('c');
+    });
+
+    it('should have add subcommand', () => {
+      const addCommand = commentCommand.commands.find(cmd => cmd.name() === 'add');
+      expect(addCommand).toBeDefined();
+      expect(addCommand.description()).toContain('add a comment');
+    });
+
+    it('should have list subcommand', () => {
+      const listCommand = commentCommand.commands.find(cmd => cmd.name() === 'list');
+      expect(listCommand).toBeDefined();
+      expect(listCommand.description()).toContain('list comments');
+    });
+
+    it('should have edit subcommand', () => {
+      const editCommand = commentCommand.commands.find(cmd => cmd.name() === 'edit');
+      expect(editCommand).toBeDefined();
+      expect(editCommand.description()).toContain('edit an existing comment');
+    });
+
+    it('should have delete subcommand', () => {
+      const deleteCommand = commentCommand.commands.find(cmd => cmd.name() === 'delete');
+      expect(deleteCommand).toBeDefined();
+      expect(deleteCommand.description()).toContain('delete a comment');
     });
   });
 

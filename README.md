@@ -5,6 +5,7 @@ A modern, extensible command-line interface for Atlassian JIRA built with Factor
 ## ✨ Features
 
 - 📋 **Issue Management**: Create, read, update, and delete JIRA issues with full CRUD operations
+- 💬 **Comment Management**: Add, list, edit, and delete comments on issues with file support
 - 📝 **Markdown Support**: Export issues to markdown files and create/update issues from markdown
 - 📊 **Project Information**: View project details, statistics, and team insights
 - 🏃 **Sprint Management**: Monitor sprint progress, burndown charts, and team velocity
@@ -218,6 +219,44 @@ jira issue list --jql "project = PROJ AND status = 'In Progress'"
 jira issue list --jql "bug" --limit 5
 ```
 
+### Manage Comments
+
+```bash
+# Add a comment to an issue
+jira issue comment add PROJ-123 "Review completed"
+
+# Add multi-line comment
+jira issue comment add PROJ-123 "Build status:
+- Unit tests: ✓
+- Integration tests: ✓
+- Deployment: pending"
+
+# Add comment from file
+jira issue comment add PROJ-123 --file ./review-notes.md
+
+# Add internal comment (visible only to team)
+jira issue comment add PROJ-123 "Internal note" --internal
+
+# List all comments on an issue
+jira issue comment list PROJ-123
+
+# List comments in JSON format
+jira issue comment list PROJ-123 --format json
+
+# Edit an existing comment
+jira issue comment edit 12345 "Updated comment text"
+
+# Edit comment from file
+jira issue comment edit 12345 --file ./updated-notes.md
+
+# Delete a comment (requires confirmation)
+jira issue comment delete 12345 --force
+
+# Using command alias
+jira issue c add PROJ-123 "Quick comment"
+jira issue c list PROJ-123
+```
+
 ### Project Management
 
 ```bash
@@ -256,6 +295,10 @@ jira sprint list --board 123 --state active
 | `issue create` | Create new issue | **Required:** `--project <key>`, `--type <type>`, `--summary <text>`<br>**Optional:** `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
 | `issue edit <key>` | Edit an existing issue (alias: update) | **At least one required:**<br>`--summary <text>`, `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
 | `issue delete <key>` | Delete issue | **Required:** `--force` |
+| `issue comment add <key> [text]` | Add comment to issue (alias: c) | `[text]` or `--file <path>`<br>**Optional:** `--internal` |
+| `issue comment list <key>` | List comments on issue | `--format <table\|json>` (default: table) |
+| `issue comment edit <id> [text]` | Edit existing comment | `[text]` or `--file <path>` |
+| `issue comment delete <id>` | Delete comment | **Required:** `--force` |
 | `project list` | List all projects | `--type <type>`, `--category <category>` |
 | `project view <key>` | View project details | - |
 | `project components <key>` | List project components | - |
@@ -309,6 +352,21 @@ jira issue edit PROJ-123 --summary "Updated summary"
 
 # Delete issue (requires --force)
 jira issue delete PROJ-123 --force
+
+# Add comment to an issue
+jira issue comment add PROJ-123 "Review completed"
+
+# Add comment from file
+jira issue comment add PROJ-123 --file ./review-notes.md
+
+# List all comments
+jira issue comment list PROJ-123
+
+# Edit a comment
+jira issue comment edit 12345 "Updated comment"
+
+# Delete a comment
+jira issue comment delete 12345 --force
 
 # List all projects
 jira project list
@@ -467,6 +525,7 @@ This project is licensed under the ISC License - see the [LICENSE](https://githu
 ## Roadmap
 
 - [x] Basic issue management (create, read, update, delete)
+- [x] Comment management (add, list, edit, delete)
 - [x] Project and sprint management
 - [x] Configuration management
 - [x] Non-interactive, automation-friendly CLI
@@ -477,7 +536,7 @@ This project is licensed under the ISC License - see the [LICENSE](https://githu
 - [ ] Bulk operations
 - [ ] Integration with other Atlassian tools
 - [ ] Issue attachments management
-- [ ] Comments and workflows
+- [ ] Workflows and transitions
 - [ ] Custom fields support
 - [ ] Time tracking
 
