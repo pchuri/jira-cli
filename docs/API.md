@@ -15,7 +15,7 @@ const client = new JiraClient(config)
 ```
 
 **Parameters:**
-- `config` (Object): Configuration object containing server, username, and token
+- `config` (Object): Configuration object containing server, username, token, and optional apiVersion (`auto`, `2`, `3`)
 
 #### Methods
 

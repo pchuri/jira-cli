@@ -18,15 +18,19 @@ describe('JiraClient', () => {
     test('should create client with correct config', () => {
       expect(client.config).toEqual(mockConfig);
       expect(client.baseURL).toBe(mockConfig.server);
-      // Auth is now handled internally by axios client
-      expect(client.client.defaults.auth).toEqual({
+      expect(client.clientV2.defaults.auth).toEqual({
+        username: mockConfig.username,
+        password: mockConfig.token
+      });
+      expect(client.clientV3.defaults.auth).toEqual({
         username: mockConfig.username,
         password: mockConfig.token
       });
     });
 
-    test('should set up axios client with correct base URL', () => {
-      expect(client.client.defaults.baseURL).toBe(`${mockConfig.server}/rest/api/2`);
+    test('should set up axios clients with correct base URL', () => {
+      expect(client.clientV2.defaults.baseURL).toBe(`${mockConfig.server}/rest/api/2`);
+      expect(client.clientV3.defaults.baseURL).toBe(`${mockConfig.server}/rest/api/3`);
     });
 
     test('should create client with Bearer auth when username is empty', () => {
@@ -40,8 +44,10 @@ describe('JiraClient', () => {
 
       expect(bearerClient.config).toEqual(bearerConfig);
       expect(bearerClient.baseURL).toBe(bearerConfig.server);
-      expect(bearerClient.client.defaults.auth).toBeNull();
-      expect(bearerClient.client.defaults.headers['Authorization']).toBe('Bearer test-token');
+      expect(bearerClient.clientV2.defaults.auth).toBeNull();
+      expect(bearerClient.clientV3.defaults.auth).toBeNull();
+      expect(bearerClient.clientV2.defaults.headers['Authorization']).toBe('Bearer test-token');
+      expect(bearerClient.clientV3.defaults.headers['Authorization']).toBe('Bearer test-token');
     });
 
     test('should create client with Bearer auth when username is missing', () => {
@@ -52,8 +58,10 @@ describe('JiraClient', () => {
 
       const bearerClient = new JiraClient(bearerConfig);
 
-      expect(bearerClient.client.defaults.auth).toBeNull();
-      expect(bearerClient.client.defaults.headers['Authorization']).toBe('Bearer test-token');
+      expect(bearerClient.clientV2.defaults.auth).toBeNull();
+      expect(bearerClient.clientV3.defaults.auth).toBeNull();
+      expect(bearerClient.clientV2.defaults.headers['Authorization']).toBe('Bearer test-token');
+      expect(bearerClient.clientV3.defaults.headers['Authorization']).toBe('Bearer test-token');
     });
 
     test('should create client with Basic auth when username is provided', () => {
@@ -65,40 +73,43 @@ describe('JiraClient', () => {
 
       const basicClient = new JiraClient(basicConfig);
 
-      expect(basicClient.client.defaults.auth).toEqual({
+      expect(basicClient.clientV2.defaults.auth).toEqual({
         username: basicConfig.username,
         password: basicConfig.token
       });
-      expect(basicClient.client.defaults.headers['Authorization']).toBeUndefined();
+      expect(basicClient.clientV3.defaults.auth).toEqual({
+        username: basicConfig.username,
+        password: basicConfig.token
+      });
+      expect(basicClient.clientV2.defaults.headers['Authorization']).toBeUndefined();
+      expect(basicClient.clientV3.defaults.headers['Authorization']).toBeUndefined();
     });
   });
 
   describe('API methods', () => {
     // Mock axios client
     beforeEach(() => {
-      client.client.get = jest.fn();
-      client.client.post = jest.fn();
-      client.client.put = jest.fn();
-      client.client.delete = jest.fn();
+      client.clientV3.request = jest.fn();
+      client.clientV3.get = jest.fn();
     });
 
     test('getIssue should make correct API call', async () => {
       const mockIssue = { key: 'TEST-1', fields: { summary: 'Test Issue' } };
-      client.client.get.mockResolvedValue({ data: mockIssue });
+      client.clientV3.request.mockResolvedValue({ data: mockIssue });
 
       const result = await client.getIssue('TEST-1');
 
-      expect(client.client.get).toHaveBeenCalledWith('/issue/TEST-1');
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'get', url: '/issue/TEST-1' });
       expect(result).toEqual(mockIssue);
     });
 
     test('searchIssues should make correct API call with JQL', async () => {
       const mockSearch = { issues: [], total: 0 };
-      client.client.get.mockResolvedValue({ data: mockSearch });
+      client.clientV3.get.mockResolvedValue({ data: mockSearch });
 
       const result = await client.searchIssues('project = TEST');
 
-      expect(client.client.get).toHaveBeenCalledWith('/search', {
+      expect(client.clientV3.get).toHaveBeenCalledWith('/search/jql', {
         params: {
           jql: 'project = TEST',
           startAt: 0,
@@ -119,21 +130,21 @@ describe('JiraClient', () => {
         }
       };
       
-      client.client.post.mockResolvedValue({ data: mockResponse });
+      client.clientV3.request.mockResolvedValue({ data: mockResponse });
 
       const result = await client.createIssue(issueData);
 
-      expect(client.client.post).toHaveBeenCalledWith('/issue', issueData);
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'post', url: '/issue', data: issueData });
       expect(result).toEqual(mockResponse);
     });
 
     test('getProjects should make correct API call', async () => {
       const mockProjects = [{ key: 'TEST', name: 'Test Project' }];
-      client.client.get.mockResolvedValue({ data: mockProjects });
+      client.clientV3.request.mockResolvedValue({ data: mockProjects });
 
       const result = await client.getProjects();
 
-      expect(client.client.get).toHaveBeenCalledWith('/project');
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'get', url: '/project' });
       expect(result).toEqual(mockProjects);
     });
 
@@ -143,60 +154,56 @@ describe('JiraClient', () => {
           { id: '10000', body: 'Test comment', author: { displayName: 'Test User' } }
         ]
       };
-      client.client.get.mockResolvedValue({ data: mockComments });
+      client.clientV3.request.mockResolvedValue({ data: mockComments });
 
       const result = await client.getComments('TEST-1');
 
-      expect(client.client.get).toHaveBeenCalledWith('/issue/TEST-1/comment');
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'get', url: '/issue/TEST-1/comment' });
       expect(result).toEqual(mockComments);
     });
 
     test('addComment should make correct API call', async () => {
       const mockComment = { id: '10001', body: 'New comment' };
-      client.client.post.mockResolvedValue({ data: mockComment });
+      client.clientV3.request.mockResolvedValue({ data: mockComment });
 
       const result = await client.addComment('TEST-1', 'New comment');
 
-      expect(client.client.post).toHaveBeenCalledWith('/issue/TEST-1/comment', {
-        body: 'New comment'
-      });
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: { body: 'New comment' } });
       expect(result).toEqual(mockComment);
     });
 
     test('addComment with internal flag should include visibility', async () => {
       const mockComment = { id: '10001', body: 'Internal comment' };
-      client.client.post.mockResolvedValue({ data: mockComment });
+      client.clientV3.request.mockResolvedValue({ data: mockComment });
 
       const result = await client.addComment('TEST-1', 'Internal comment', { internal: true });
 
-      expect(client.client.post).toHaveBeenCalledWith('/issue/TEST-1/comment', {
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: {
         body: 'Internal comment',
         visibility: {
           type: 'role',
           value: 'Administrators'
         }
-      });
+      } });
       expect(result).toEqual(mockComment);
     });
 
     test('updateComment should make correct API call', async () => {
       const mockComment = { id: '10000', body: 'Updated comment' };
-      client.client.put.mockResolvedValue({ data: mockComment });
+      client.clientV3.request.mockResolvedValue({ data: mockComment });
 
       const result = await client.updateComment('10000', 'Updated comment');
 
-      expect(client.client.put).toHaveBeenCalledWith('/comment/10000', {
-        body: 'Updated comment'
-      });
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'put', url: '/comment/10000', data: { body: 'Updated comment' } });
       expect(result).toEqual(mockComment);
     });
 
     test('deleteComment should make correct API call', async () => {
-      client.client.delete.mockResolvedValue({});
+      client.clientV3.request.mockResolvedValue({});
 
       const result = await client.deleteComment('10000');
 
-      expect(client.client.delete).toHaveBeenCalledWith('/comment/10000');
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'delete', url: '/comment/10000' });
       expect(result).toBe(true);
     });
   });
@@ -206,7 +213,7 @@ describe('JiraClient', () => {
     test('should handle axios errors', async () => {
       // Test that errors are properly propagated
       const error = new Error('Network error');
-      client.client.get = jest.fn().mockRejectedValue(error);
+      client.clientV3.request = jest.fn().mockRejectedValue(error);
 
       await expect(client.getIssue('TEST-1')).rejects.toThrow('Network error');
     });
