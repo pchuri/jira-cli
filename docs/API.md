@@ -17,6 +17,8 @@ const client = new JiraClient(config)
 **Parameters:**
 - `config` (Object): Configuration object containing server, username, token, and optional apiVersion (`auto`, `2`, `3`)
 
+When `apiVersion` is `auto`, the client starts with v3 and retries with v2 on certain endpoint failures; the successful version is kept for the rest of the process.
+
 #### Methods
 
 ##### Issue Operations
