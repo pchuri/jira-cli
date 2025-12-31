@@ -55,11 +55,13 @@ npm link
    # Bearer authentication (recommended)
    export JIRA_HOST=your-jira-instance.atlassian.net
    export JIRA_API_TOKEN=your-api-token
+   export JIRA_API_VERSION=auto  # optional: auto (default), 2, 3
 
    # Basic authentication (optional)
    export JIRA_HOST=your-jira-instance.atlassian.net
    export JIRA_API_TOKEN=your-api-token
    export JIRA_USERNAME=your-email@company.com
+   export JIRA_API_VERSION=auto  # optional: auto (default), 2, 3
    ```
 
 4. **Verify connection:**
@@ -101,10 +103,19 @@ jira config --server https://yourcompany.atlassian.net \
 jira config set server https://yourcompany.atlassian.net
 jira config set token your-api-token
 jira config set username your-email@company.com  # optional
+jira config set apiVersion auto  # optional: auto (default), 2, 3
 
 # Show current configuration
 jira config --show
 ```
+
+### Jira REST API Version
+
+By default, the CLI uses `auto` mode: it tries Jira REST API v3 first and automatically retries with v2 if needed. If a fallback happens, the CLI keeps using the working version for the rest of the process.
+
+You can override the behavior:
+- Config: `jira config set apiVersion auto|2|3`
+- Env: `JIRA_API_VERSION=auto|2|3`
 
 ### Option 2: Environment Variables
 
@@ -115,11 +126,13 @@ You can configure the CLI using environment variables in either a new or legacy 
 # Bearer authentication
 export JIRA_HOST="your-jira-instance.atlassian.net"
 export JIRA_API_TOKEN="your-api-token"
+export JIRA_API_VERSION="auto"  # optional: auto (default), 2, 3
 
 # Basic authentication (add username)
 export JIRA_HOST="your-jira-instance.atlassian.net"
 export JIRA_API_TOKEN="your-api-token"
 export JIRA_USERNAME="your-email@company.com"
+export JIRA_API_VERSION="auto"  # optional: auto (default), 2, 3
 ```
 
 #### Legacy format (JIRA_DOMAIN)
@@ -127,6 +140,7 @@ export JIRA_USERNAME="your-email@company.com"
 export JIRA_DOMAIN="your-domain.atlassian.net"
 export JIRA_USERNAME="your-email@company.com"
 export JIRA_API_TOKEN="your-api-token"
+export JIRA_API_VERSION="auto"  # optional: auto (default), 2, 3
 ```
 
 ### Getting Your API Token
