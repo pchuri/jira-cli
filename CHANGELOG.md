@@ -1,3 +1,10 @@
+## [2.3.1](https://github.com/pchuri/jira-cli/compare/v2.3.0...v2.3.1) (2025-12-31)
+
+
+### Bug Fixes
+
+* support Jira REST API v3 (v2 fallback) ([0c1fe3d](https://github.com/pchuri/jira-cli/commit/0c1fe3d2ce38768e93cef2a904ac75d2d1cf6e09)), closes [#18](https://github.com/pchuri/jira-cli/issues/18)
+
 # [2.3.0](https://github.com/pchuri/jira-cli/compare/v2.2.0...v2.3.0) (2025-12-29)
 
 
