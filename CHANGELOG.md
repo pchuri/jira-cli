@@ -1,3 +1,10 @@
+## [2.3.2](https://github.com/pchuri/jira-cli/compare/v2.3.1...v2.3.2) (2026-04-01)
+
+
+### Bug Fixes
+
+* handle SAML/SSO HTML responses in API version fallback ([#20](https://github.com/pchuri/jira-cli/issues/20)) ([840b608](https://github.com/pchuri/jira-cli/commit/840b608dd85c04b877e5690fb5c4029ffbcd9018))
+
 ## [2.3.1](https://github.com/pchuri/jira-cli/compare/v2.3.0...v2.3.1) (2025-12-31)
 
 
