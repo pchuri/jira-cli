@@ -1,3 +1,10 @@
+## [2.3.3](https://github.com/pchuri/jira-cli/compare/v2.3.2...v2.3.3) (2026-04-11)
+
+
+### Bug Fixes
+
+* convert ADF description to text for markdown/detail output ([#22](https://github.com/pchuri/jira-cli/issues/22)) ([25ecf91](https://github.com/pchuri/jira-cli/commit/25ecf9153cd532ff64b29277cfd9416d56fecc0e)), closes [#21](https://github.com/pchuri/jira-cli/issues/21)
+
 ## [2.3.2](https://github.com/pchuri/jira-cli/compare/v2.3.1...v2.3.2) (2026-04-01)
 
 
