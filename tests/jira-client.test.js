@@ -206,6 +206,111 @@ describe('JiraClient', () => {
       expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'delete', url: '/comment/10000' });
       expect(result).toBe(true);
     });
+
+    test('getRemoteLinks should make correct API call', async () => {
+      const mockLinks = [{ id: 10000, object: { url: 'https://example.com', title: 'Example' } }];
+      client.clientV3.request.mockResolvedValue({ data: mockLinks });
+
+      const result = await client.getRemoteLinks('TEST-1');
+
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'get',
+        url: '/issue/TEST-1/remotelink',
+        params: {}
+      });
+      expect(result).toEqual(mockLinks);
+    });
+
+    test('getRemoteLinks should pass globalId filter when provided', async () => {
+      const mockLinks = [{ id: 10000 }];
+      client.clientV3.request.mockResolvedValue({ data: mockLinks });
+
+      await client.getRemoteLinks('TEST-1', { globalId: 'https://example.com/resource' });
+
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'get',
+        url: '/issue/TEST-1/remotelink',
+        params: { globalId: 'https://example.com/resource' }
+      });
+    });
+
+    test('getRemoteLinks should wrap single-object responses in an array', async () => {
+      const singleLink = { id: 10000, object: { url: 'https://example.com' } };
+      client.clientV3.request.mockResolvedValue({ data: singleLink });
+
+      const result = await client.getRemoteLinks('TEST-1', { globalId: 'https://example.com' });
+
+      expect(result).toEqual([singleLink]);
+    });
+
+    test('getRemoteLinks should return empty array for null/undefined data', async () => {
+      client.clientV3.request.mockResolvedValue({ data: null });
+
+      const result = await client.getRemoteLinks('TEST-1');
+
+      expect(result).toEqual([]);
+    });
+
+    test('getRemoteLink should make correct API call', async () => {
+      const mockLink = {
+        id: 10001,
+        globalId: 'https://example.com/resource',
+        object: { url: 'https://example.com/resource', title: 'Example' }
+      };
+      client.clientV3.request.mockResolvedValue({ data: mockLink });
+
+      const result = await client.getRemoteLink('TEST-1', '10001');
+
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'get',
+        url: '/issue/TEST-1/remotelink/10001'
+      });
+      expect(result).toEqual(mockLink);
+    });
+
+    test('addRemoteLink should make correct API call', async () => {
+      const payload = {
+        globalId: 'https://example.com/resource',
+        relationship: 'relates to',
+        object: { url: 'https://example.com/resource', title: 'Example' }
+      };
+      const mockResponse = { id: 10001, self: 'https://test.atlassian.net/rest/api/3/issue/TEST-1/remotelink/10001' };
+      client.clientV3.request.mockResolvedValue({ data: mockResponse });
+
+      const result = await client.addRemoteLink('TEST-1', payload);
+
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'post',
+        url: '/issue/TEST-1/remotelink',
+        data: payload
+      });
+      expect(result).toEqual(mockResponse);
+    });
+
+    test('updateRemoteLink should make correct API call', async () => {
+      const payload = { object: { url: 'https://example.com/new', title: 'Updated' } };
+      client.clientV3.request.mockResolvedValue({ data: {} });
+
+      await client.updateRemoteLink('TEST-1', '10001', payload);
+
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'put',
+        url: '/issue/TEST-1/remotelink/10001',
+        data: payload
+      });
+    });
+
+    test('deleteRemoteLink should make correct API call', async () => {
+      client.clientV3.request.mockResolvedValue({});
+
+      const result = await client.deleteRemoteLink('TEST-1', '10001');
+
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'delete',
+        url: '/issue/TEST-1/remotelink/10001'
+      });
+      expect(result).toBe(true);
+    });
   });
 
   // Error handling tests

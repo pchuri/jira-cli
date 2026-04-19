@@ -271,6 +271,43 @@ jira issue c add PROJ-123 "Quick comment"
 jira issue c list PROJ-123
 ```
 
+### Manage Remote Links
+
+Attach external resources (GitHub PRs, CI runs, dashboards, docs) to a Jira issue as Remote Links.
+
+```bash
+# List remote links on an issue
+jira issue remote-link list PROJ-123
+
+# List in JSON format
+jira issue remote-link list PROJ-123 --format json
+
+# Filter by globalId (useful to check if a link already exists)
+jira issue remote-link list PROJ-123 --global-id https://github.com/org/repo/pull/42
+
+# Add a remote link
+jira issue remote-link add PROJ-123 \
+    --url https://github.com/org/repo/pull/42 \
+    --title "org/repo#42"
+
+# Add with globalId for upsert behavior (Jira updates existing link with same globalId)
+jira issue remote-link add PROJ-123 \
+    --url https://github.com/org/repo/pull/42 \
+    --title "org/repo#42" \
+    --global-id https://github.com/org/repo/pull/42 \
+    --relationship "relates to"
+
+# Update an existing remote link
+jira issue remote-link update PROJ-123 12345 --title "Updated title"
+
+# Delete a remote link (requires --force)
+jira issue remote-link delete PROJ-123 12345 --force
+
+# Using command alias
+jira issue rl list PROJ-123
+jira issue rl add PROJ-123 --url https://example.com --title "Example"
+```
+
 ### Project Management
 
 ```bash
@@ -313,6 +350,10 @@ jira sprint list --board 123 --state active
 | `issue comment list <key>` | List comments on issue | `--format <table\|json>` (default: table) |
 | `issue comment edit <id> [text]` | Edit existing comment | `[text]` or `--file <path>` |
 | `issue comment delete <id>` | Delete comment | **Required:** `--force` |
+| `issue remote-link list <key>` | List remote links on issue (alias: rl) | `--format <table\|json>` (default: table), `--global-id <id>` |
+| `issue remote-link add <key>` | Add remote link to issue | **Required:** `--url <url>`, `--title <title>`<br>**Optional:** `--global-id <id>`, `--relationship <rel>`, `--summary <text>`, `--icon-url <url>`, `--icon-title <title>` |
+| `issue remote-link update <key> <linkId>` | Update an existing remote link | **At least one required:**<br>`--url <url>`, `--title <title>`, `--relationship <rel>`, `--summary <text>`, `--icon-url <url>`, `--icon-title <title>` |
+| `issue remote-link delete <key> <linkId>` | Delete remote link | **Required:** `--force` |
 | `project list` | List all projects | `--type <type>`, `--category <category>` |
 | `project view <key>` | View project details | - |
 | `project components <key>` | List project components | - |
@@ -381,6 +422,19 @@ jira issue comment edit 12345 "Updated comment"
 
 # Delete a comment
 jira issue comment delete 12345 --force
+
+# Add a GitHub PR as a remote link
+jira issue remote-link add PROJ-123 \
+    --url https://github.com/org/repo/pull/42 \
+    --title "org/repo#42" \
+    --global-id https://github.com/org/repo/pull/42 \
+    --relationship "relates to"
+
+# List remote links
+jira issue remote-link list PROJ-123
+
+# Delete a remote link
+jira issue remote-link delete PROJ-123 12345 --force
 
 # List all projects
 jira project list
