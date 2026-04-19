@@ -1,3 +1,10 @@
+## [2.4.1](https://github.com/pchuri/jira-cli/compare/v2.4.0...v2.4.1) (2026-04-19)
+
+
+### Bug Fixes
+
+* **security:** escape JQL string values to prevent injection ([#25](https://github.com/pchuri/jira-cli/issues/25)) ([f5678dd](https://github.com/pchuri/jira-cli/commit/f5678ddbb57146d730904aea83543fdc32816c54))
+
 # [2.4.0](https://github.com/pchuri/jira-cli/compare/v2.3.3...v2.4.0) (2026-04-19)
 
 
