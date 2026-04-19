@@ -8,16 +8,23 @@ describe('IssueCommand', () => {
   let issueCommand;
 
   beforeEach(() => {
+    const outFn = jest.fn();
+    outFn.write = jest.fn();
     mockIOStreams = {
-      out: {
-        write: jest.fn()
-      },
+      out: outFn,
       println: jest.fn(),
       printError: jest.fn(),
       printSuccess: jest.fn(),
       success: jest.fn(),
       error: jest.fn(),
-      colorize: jest.fn()
+      info: jest.fn(),
+      colorize: jest.fn(),
+      spinner: jest.fn(() => ({
+        start: jest.fn(),
+        stop: jest.fn(),
+        succeed: jest.fn(),
+        fail: jest.fn()
+      }))
     };
 
     mockJiraClient = {
@@ -31,7 +38,11 @@ describe('IssueCommand', () => {
       updateComment: jest.fn(),
       deleteComment: jest.fn(),
       getTransitions: jest.fn(),
-      transitionIssue: jest.fn()
+      transitionIssue: jest.fn(),
+      getRemoteLinks: jest.fn(),
+      addRemoteLink: jest.fn(),
+      updateRemoteLink: jest.fn(),
+      deleteRemoteLink: jest.fn()
     };
 
     mockAnalytics = {
@@ -109,6 +120,197 @@ describe('IssueCommand', () => {
       const deleteCommand = commentCommand.commands.find(cmd => cmd.name() === 'delete');
       expect(deleteCommand).toBeDefined();
       expect(deleteCommand.description()).toContain('delete a comment');
+    });
+  });
+
+  describe('remote-link subcommand', () => {
+    let remoteLinkCommand;
+
+    beforeEach(() => {
+      remoteLinkCommand = issueCommand.commands.find(cmd => cmd.name() === 'remote-link');
+    });
+
+    it('should exist with correct alias', () => {
+      expect(remoteLinkCommand).toBeDefined();
+      expect(remoteLinkCommand.aliases()).toContain('rl');
+    });
+
+    it('should have list subcommand', () => {
+      const listCommand = remoteLinkCommand.commands.find(cmd => cmd.name() === 'list');
+      expect(listCommand).toBeDefined();
+      expect(listCommand.description()).toContain('list remote links');
+
+      const formatOption = listCommand.options.find(opt => opt.long === '--format');
+      expect(formatOption).toBeDefined();
+      expect(formatOption.defaultValue).toBe('table');
+
+      const globalIdOption = listCommand.options.find(opt => opt.long === '--global-id');
+      expect(globalIdOption).toBeDefined();
+    });
+
+    it('should have add subcommand with url and title options', () => {
+      const addCommand = remoteLinkCommand.commands.find(cmd => cmd.name() === 'add');
+      expect(addCommand).toBeDefined();
+      expect(addCommand.description()).toContain('add a remote link');
+
+      const urlOption = addCommand.options.find(opt => opt.long === '--url');
+      expect(urlOption).toBeDefined();
+
+      const titleOption = addCommand.options.find(opt => opt.long === '--title');
+      expect(titleOption).toBeDefined();
+
+      const globalIdOption = addCommand.options.find(opt => opt.long === '--global-id');
+      expect(globalIdOption).toBeDefined();
+
+      const relationshipOption = addCommand.options.find(opt => opt.long === '--relationship');
+      expect(relationshipOption).toBeDefined();
+    });
+
+    it('should have update subcommand', () => {
+      const updateCommand = remoteLinkCommand.commands.find(cmd => cmd.name() === 'update');
+      expect(updateCommand).toBeDefined();
+      expect(updateCommand.description()).toContain('update an existing remote link');
+    });
+
+    it('should have delete subcommand with force option', () => {
+      const deleteCommand = remoteLinkCommand.commands.find(cmd => cmd.name() === 'delete');
+      expect(deleteCommand).toBeDefined();
+      expect(deleteCommand.description()).toContain('delete a remote link');
+
+      const forceOption = deleteCommand.options.find(opt => opt.long === '--force');
+      expect(forceOption).toBeDefined();
+    });
+  });
+
+  describe('remote-link command execution', () => {
+    let exitSpy;
+
+    beforeEach(() => {
+      exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      exitSpy.mockRestore();
+    });
+
+    it('should call getRemoteLinks on list', async () => {
+      mockJiraClient.getRemoteLinks.mockResolvedValue([]);
+
+      await issueCommand.parseAsync(['node', 'jira', 'remote-link', 'list', 'PROJ-123']);
+
+      expect(mockJiraClient.getRemoteLinks).toHaveBeenCalledWith('PROJ-123', { globalId: undefined });
+    });
+
+    it('should pass globalId filter to getRemoteLinks', async () => {
+      mockJiraClient.getRemoteLinks.mockResolvedValue([]);
+
+      await issueCommand.parseAsync([
+        'node', 'jira', 'remote-link', 'list', 'PROJ-123',
+        '--global-id', 'https://example.com/resource'
+      ]);
+
+      expect(mockJiraClient.getRemoteLinks).toHaveBeenCalledWith('PROJ-123', {
+        globalId: 'https://example.com/resource'
+      });
+    });
+
+    it('should require --url and --title for add', async () => {
+      await issueCommand.parseAsync(['node', 'jira', 'remote-link', 'add', 'PROJ-123']);
+
+      expect(mockJiraClient.addRemoteLink).not.toHaveBeenCalled();
+      expect(mockIOStreams.error).toHaveBeenCalledWith(
+        expect.stringContaining('Missing required options')
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should build correct payload for add with required options', async () => {
+      mockJiraClient.addRemoteLink.mockResolvedValue({ id: 10001 });
+
+      await issueCommand.parseAsync([
+        'node', 'jira', 'remote-link', 'add', 'PROJ-123',
+        '--url', 'https://github.com/org/repo/pull/42',
+        '--title', 'org/repo#42'
+      ]);
+
+      expect(mockJiraClient.addRemoteLink).toHaveBeenCalledWith('PROJ-123', {
+        object: {
+          url: 'https://github.com/org/repo/pull/42',
+          title: 'org/repo#42'
+        }
+      });
+    });
+
+    it('should include globalId, relationship, summary, and icon in add payload', async () => {
+      mockJiraClient.addRemoteLink.mockResolvedValue({ id: 10001 });
+
+      await issueCommand.parseAsync([
+        'node', 'jira', 'remote-link', 'add', 'PROJ-123',
+        '--url', 'https://example.com/resource',
+        '--title', 'Example resource',
+        '--global-id', 'https://example.com/resource',
+        '--relationship', 'relates to',
+        '--summary', 'A resource summary',
+        '--icon-url', 'https://example.com/icon.png',
+        '--icon-title', 'Example icon'
+      ]);
+
+      expect(mockJiraClient.addRemoteLink).toHaveBeenCalledWith('PROJ-123', {
+        globalId: 'https://example.com/resource',
+        relationship: 'relates to',
+        object: {
+          url: 'https://example.com/resource',
+          title: 'Example resource',
+          summary: 'A resource summary',
+          icon: {
+            url16x16: 'https://example.com/icon.png',
+            title: 'Example icon'
+          }
+        }
+      });
+    });
+
+    it('should require at least one field on update', async () => {
+      await issueCommand.parseAsync(['node', 'jira', 'remote-link', 'update', 'PROJ-123', '10001']);
+
+      expect(mockJiraClient.updateRemoteLink).not.toHaveBeenCalled();
+      expect(mockIOStreams.error).toHaveBeenCalledWith(
+        expect.stringContaining('At least one field must be specified')
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should call updateRemoteLink with partial payload', async () => {
+      mockJiraClient.updateRemoteLink.mockResolvedValue({});
+
+      await issueCommand.parseAsync([
+        'node', 'jira', 'remote-link', 'update', 'PROJ-123', '10001',
+        '--title', 'Updated title'
+      ]);
+
+      expect(mockJiraClient.updateRemoteLink).toHaveBeenCalledWith('PROJ-123', '10001', {
+        object: { title: 'Updated title' }
+      });
+    });
+
+    it('should require --force on delete', async () => {
+      await issueCommand.parseAsync(['node', 'jira', 'remote-link', 'delete', 'PROJ-123', '10001']);
+
+      expect(mockJiraClient.deleteRemoteLink).not.toHaveBeenCalled();
+      expect(mockIOStreams.error).toHaveBeenCalledWith(
+        expect.stringContaining('--force flag to confirm')
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should call deleteRemoteLink when --force is provided', async () => {
+      mockJiraClient.deleteRemoteLink.mockResolvedValue(true);
+
+      await issueCommand.parseAsync([
+        'node', 'jira', 'remote-link', 'delete', 'PROJ-123', '10001', '--force'
+      ]);
+
+      expect(mockJiraClient.deleteRemoteLink).toHaveBeenCalledWith('PROJ-123', '10001');
     });
   });
 
