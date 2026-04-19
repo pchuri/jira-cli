@@ -1,3 +1,10 @@
+# [2.4.0](https://github.com/pchuri/jira-cli/compare/v2.3.3...v2.4.0) (2026-04-19)
+
+
+### Features
+
+* **issue:** add remote link support ([#24](https://github.com/pchuri/jira-cli/issues/24)) ([864cb2d](https://github.com/pchuri/jira-cli/commit/864cb2de77ab8774ba9d22d0a56543d4cbb63e3a)), closes [#23](https://github.com/pchuri/jira-cli/issues/23)
+
 ## [2.3.3](https://github.com/pchuri/jira-cli/compare/v2.3.2...v2.3.3) (2026-04-11)
 
 
