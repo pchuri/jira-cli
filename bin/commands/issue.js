@@ -705,7 +705,7 @@ async function listRemoteLinks(client, io, issueKey, options = {}) {
     });
     spinner.stop();
 
-    if (!Array.isArray(links) || links.length === 0) {
+    if (links.length === 0) {
       io.info(`No remote links found for ${issueKey}`);
       return;
     }
@@ -762,6 +762,30 @@ async function addRemoteLink(client, io, issueKey, options = {}) {
   }
 }
 
+function mergeRemoteLinkPayload(existing, options) {
+  const base = { ...(existing || {}) };
+  delete base.id;
+  delete base.self;
+
+  const payload = {
+    ...base,
+    object: { ...(base.object || {}) }
+  };
+
+  if (options.url) payload.object.url = options.url;
+  if (options.title) payload.object.title = options.title;
+  if (options.summary) payload.object.summary = options.summary;
+  if (options.relationship) payload.relationship = options.relationship;
+
+  if (options.iconUrl || options.iconTitle) {
+    payload.object.icon = { ...(payload.object.icon || {}) };
+    if (options.iconUrl) payload.object.icon.url16x16 = options.iconUrl;
+    if (options.iconTitle) payload.object.icon.title = options.iconTitle;
+  }
+
+  return payload;
+}
+
 async function updateRemoteLink(client, io, issueKey, linkId, options = {}) {
   if (!options.url && !options.title && !options.summary &&
       !options.relationship && !options.iconUrl && !options.iconTitle) {
@@ -780,7 +804,11 @@ async function updateRemoteLink(client, io, issueKey, linkId, options = {}) {
     );
   }
 
-  const payload = buildRemoteLinkPayload(options);
+  const fetchSpinner = io.spinner(`Loading remote link ${linkId}...`);
+  const existing = await client.getRemoteLink(issueKey, linkId);
+  fetchSpinner.stop();
+
+  const payload = mergeRemoteLinkPayload(existing, options);
 
   const spinner = io.spinner(`Updating remote link ${linkId}...`);
   await client.updateRemoteLink(issueKey, linkId, payload);

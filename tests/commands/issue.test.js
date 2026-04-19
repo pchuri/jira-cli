@@ -40,6 +40,7 @@ describe('IssueCommand', () => {
       getTransitions: jest.fn(),
       transitionIssue: jest.fn(),
       getRemoteLinks: jest.fn(),
+      getRemoteLink: jest.fn(),
       addRemoteLink: jest.fn(),
       updateRemoteLink: jest.fn(),
       deleteRemoteLink: jest.fn()
@@ -273,6 +274,7 @@ describe('IssueCommand', () => {
     it('should require at least one field on update', async () => {
       await issueCommand.parseAsync(['node', 'jira', 'remote-link', 'update', 'PROJ-123', '10001']);
 
+      expect(mockJiraClient.getRemoteLink).not.toHaveBeenCalled();
       expect(mockJiraClient.updateRemoteLink).not.toHaveBeenCalled();
       expect(mockIOStreams.error).toHaveBeenCalledWith(
         expect.stringContaining('At least one field must be specified')
@@ -280,7 +282,20 @@ describe('IssueCommand', () => {
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
-    it('should call updateRemoteLink with partial payload', async () => {
+    it('should fetch existing link and merge before PUT (preserves unchanged fields)', async () => {
+      mockJiraClient.getRemoteLink.mockResolvedValue({
+        id: 10001,
+        self: 'https://test.atlassian.net/rest/api/3/issue/PROJ-123/remotelink/10001',
+        globalId: 'https://example.com/resource',
+        application: { type: 'com.acme.tracker', name: 'Acme' },
+        relationship: 'relates to',
+        object: {
+          url: 'https://example.com/resource',
+          title: 'Old title',
+          summary: 'Unchanged summary',
+          icon: { url16x16: 'https://example.com/icon.png', title: 'icon' }
+        }
+      });
       mockJiraClient.updateRemoteLink.mockResolvedValue({});
 
       await issueCommand.parseAsync([
@@ -288,8 +303,45 @@ describe('IssueCommand', () => {
         '--title', 'Updated title'
       ]);
 
+      expect(mockJiraClient.getRemoteLink).toHaveBeenCalledWith('PROJ-123', '10001');
       expect(mockJiraClient.updateRemoteLink).toHaveBeenCalledWith('PROJ-123', '10001', {
-        object: { title: 'Updated title' }
+        globalId: 'https://example.com/resource',
+        application: { type: 'com.acme.tracker', name: 'Acme' },
+        relationship: 'relates to',
+        object: {
+          url: 'https://example.com/resource',
+          title: 'Updated title',
+          summary: 'Unchanged summary',
+          icon: { url16x16: 'https://example.com/icon.png', title: 'icon' }
+        }
+      });
+    });
+
+    it('should overlay multiple fields without dropping existing ones', async () => {
+      mockJiraClient.getRemoteLink.mockResolvedValue({
+        id: 10001,
+        self: 'https://...',
+        object: {
+          url: 'https://old.example.com',
+          title: 'Old title'
+        }
+      });
+      mockJiraClient.updateRemoteLink.mockResolvedValue({});
+
+      await issueCommand.parseAsync([
+        'node', 'jira', 'remote-link', 'update', 'PROJ-123', '10001',
+        '--url', 'https://new.example.com',
+        '--summary', 'New summary',
+        '--icon-url', 'https://example.com/new-icon.png'
+      ]);
+
+      expect(mockJiraClient.updateRemoteLink).toHaveBeenCalledWith('PROJ-123', '10001', {
+        object: {
+          url: 'https://new.example.com',
+          title: 'Old title',
+          summary: 'New summary',
+          icon: { url16x16: 'https://example.com/new-icon.png' }
+        }
       });
     });
 

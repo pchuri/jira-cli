@@ -234,6 +234,40 @@ describe('JiraClient', () => {
       });
     });
 
+    test('getRemoteLinks should wrap single-object responses in an array', async () => {
+      const singleLink = { id: 10000, object: { url: 'https://example.com' } };
+      client.clientV3.request.mockResolvedValue({ data: singleLink });
+
+      const result = await client.getRemoteLinks('TEST-1', { globalId: 'https://example.com' });
+
+      expect(result).toEqual([singleLink]);
+    });
+
+    test('getRemoteLinks should return empty array for null/undefined data', async () => {
+      client.clientV3.request.mockResolvedValue({ data: null });
+
+      const result = await client.getRemoteLinks('TEST-1');
+
+      expect(result).toEqual([]);
+    });
+
+    test('getRemoteLink should make correct API call', async () => {
+      const mockLink = {
+        id: 10001,
+        globalId: 'https://example.com/resource',
+        object: { url: 'https://example.com/resource', title: 'Example' }
+      };
+      client.clientV3.request.mockResolvedValue({ data: mockLink });
+
+      const result = await client.getRemoteLink('TEST-1', '10001');
+
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'get',
+        url: '/issue/TEST-1/remotelink/10001'
+      });
+      expect(result).toEqual(mockLink);
+    });
+
     test('addRemoteLink should make correct API call', async () => {
       const payload = {
         globalId: 'https://example.com/resource',
