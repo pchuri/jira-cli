@@ -334,5 +334,70 @@ describe('Utils', () => {
 
       expect(jql).toBe('ORDER BY updated DESC');
     });
+
+    it('should escape double quotes in project to prevent JQL injection', () => {
+      const options = { project: 'TEST" OR project = "X' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('project = "TEST\\" OR project = \\"X"');
+    });
+
+    it('should escape backslashes in values', () => {
+      const options = { project: 'A\\B' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('project = "A\\\\B"');
+    });
+
+    it('should escape injection attempts in assignee', () => {
+      const options = { assignee: 'bob" OR assignee = "alice' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('assignee = "bob\\" OR assignee = \\"alice"');
+    });
+
+    it('should escape injection attempts in status', () => {
+      const options = { status: 'Open" OR status = "Done' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('status = "Open\\" OR status = \\"Done"');
+    });
+
+    it('should escape newlines and tabs in values', () => {
+      const options = { project: 'A\nB\tC\rD' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('project = "A\\nB\\tC\\rD"');
+    });
+
+    it('should still treat currentUser sentinel as function call', () => {
+      const options = { assignee: 'currentUser' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('assignee = currentUser()');
+    });
+  });
+
+  describe('escapeJqlString', () => {
+    it('should escape double quotes', () => {
+      expect(Utils.escapeJqlString('a"b')).toBe('a\\"b');
+    });
+
+    it('should escape backslashes before quotes', () => {
+      expect(Utils.escapeJqlString('a\\"b')).toBe('a\\\\\\"b');
+    });
+
+    it('should escape control characters', () => {
+      expect(Utils.escapeJqlString('a\nb\rc\td')).toBe('a\\nb\\rc\\td');
+    });
+
+    it('should coerce non-string inputs', () => {
+      expect(Utils.escapeJqlString(123)).toBe('123');
+      expect(Utils.escapeJqlString(null)).toBe('null');
+    });
+
+    it('should leave safe strings unchanged', () => {
+      expect(Utils.escapeJqlString('TEST-123')).toBe('TEST-123');
+    });
   });
 });
