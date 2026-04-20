@@ -477,6 +477,41 @@ describe('Utils', () => {
       expect(jql).toBe('project = "TEST" ORDER BY created DESC');
     });
 
+    it('should not split ORDER BY that appears only inside a quoted literal', () => {
+      const options = { jql: 'summary ~ "ORDER BY"' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('(summary ~ "ORDER BY")');
+    });
+
+    it('should split trailing ORDER BY when an earlier ORDER BY is inside quotes', () => {
+      const options = { jql: 'summary ~ "ORDER BY" ORDER BY created' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('(summary ~ "ORDER BY") ORDER BY created');
+    });
+
+    it('should not split ORDER BY inside a single-quoted literal', () => {
+      const options = { jql: 'summary ~ \'ORDER BY\'' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('(summary ~ \'ORDER BY\')');
+    });
+
+    it('should respect escaped quotes when scanning for ORDER BY', () => {
+      const options = { jql: 'summary ~ "contains \\"ORDER BY\\" here"' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('(summary ~ "contains \\"ORDER BY\\" here")');
+    });
+
+    it('should not treat ORDER BY inside parens as the sort clause', () => {
+      const options = { jql: '(status = "Open") ORDER BY priority' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('((status = "Open")) ORDER BY priority');
+    });
+
     it('should combine all filter types', () => {
       const options = {
         project: 'TEST',
