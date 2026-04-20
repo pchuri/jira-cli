@@ -1,3 +1,10 @@
+## [2.4.2](https://github.com/pchuri/jira-cli/compare/v2.4.1...v2.4.2) (2026-04-20)
+
+
+### Bug Fixes
+
+* **issue:** honor list filter options that were silently ignored ([#26](https://github.com/pchuri/jira-cli/issues/26)) ([bbb9476](https://github.com/pchuri/jira-cli/commit/bbb9476addeabf820f4321512ba76183a8ed4c51))
+
 ## [2.4.1](https://github.com/pchuri/jira-cli/compare/v2.4.0...v2.4.1) (2026-04-19)
 
 
