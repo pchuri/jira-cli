@@ -30,12 +30,12 @@ function createIssueCommand(factory) {
     .option('--assignee <assignee>', 'filter by assignee (use "currentUser" for yourself)')
     .option('--status <status>', 'filter by status (e.g., Open, In Progress)')
     .option('--type <type>', 'filter by issue type (e.g., Bug, Story)')
-    .option('--reporter <reporter>', 'filter by reporter')
+    .option('--reporter <reporter>', 'filter by reporter (use "currentUser" for yourself)')
     .option('--priority <priority>', 'filter by priority (e.g., High, Medium)')
-    .option('--created <date>', 'created date filter (e.g., -7d, 2023-01-01)')
-    .option('--updated <date>', 'updated date filter')
+    .option('--created <date>', 'created since date (e.g., -7d, 2023-01-01)')
+    .option('--updated <date>', 'updated since date (e.g., -7d, 2023-01-01)')
     .option('--limit <limit>', 'limit number of results (default: 20)', '20')
-    .option('--jql <query>', 'custom JQL query for advanced filtering')
+    .option('--jql <query>', 'custom JQL expression, AND-composed with other filters')
     .action(async (options) => {
       const io = factory.getIOStreams();
       const client = await factory.getJiraClient();

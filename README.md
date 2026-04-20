@@ -342,7 +342,7 @@ jira sprint list --board 123 --state active
 | `config --show` | Show current configuration | - |
 | `config set <key> <value>` | Set individual config value | - |
 | `issue view <key>` | View issue details (alias: show) | `--format <terminal\|markdown>`, `--output <path>` |
-| `issue list` | List issues | `--project <key>`, `--assignee <user>`, `--status <status>`, `--jql <query>`, `--limit <number>` |
+| `issue list` | List issues | `--project <key>`, `--assignee <user>`, `--reporter <user>`, `--status <status>`, `--type <type>`, `--priority <level>`, `--created <date>`, `--updated <date>`, `--jql <query>`, `--limit <number>` |
 | `issue create` | Create new issue | **Required:** `--project <key>`, `--type <type>`, `--summary <text>`<br>**Optional:** `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
 | `issue edit <key>` | Edit an existing issue (alias: update) | **At least one required:**<br>`--summary <text>`, `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
 | `issue delete <key>` | Delete issue | **Required:** `--force` |

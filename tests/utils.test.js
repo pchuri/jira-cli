@@ -376,6 +376,92 @@ describe('Utils', () => {
 
       expect(jql).toBe('assignee = currentUser()');
     });
+
+    it('should build JQL with reporter filter', () => {
+      const options = { reporter: 'jane.doe' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('reporter = "jane.doe"');
+    });
+
+    it('should build JQL with currentUser reporter', () => {
+      const options = { reporter: 'currentUser' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('reporter = currentUser()');
+    });
+
+    it('should build JQL with issue type filter', () => {
+      const options = { type: 'Bug' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('issuetype = "Bug"');
+    });
+
+    it('should build JQL with priority filter', () => {
+      const options = { priority: 'High' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('priority = "High"');
+    });
+
+    it('should build JQL with created date filter', () => {
+      const options = { created: '-7d' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('created >= "-7d"');
+    });
+
+    it('should build JQL with updated date filter', () => {
+      const options = { updated: '2023-01-01' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('updated >= "2023-01-01"');
+    });
+
+    it('should escape injection attempts in date filters', () => {
+      const options = { created: '-7d" OR project = "X' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('created >= "-7d\\" OR project = \\"X"');
+    });
+
+    it('should pass through custom jql expression wrapped in parens', () => {
+      const options = { jql: 'fixVersion = "1.0"' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('(fixVersion = "1.0")');
+    });
+
+    it('should AND-compose custom jql with structured filters', () => {
+      const options = {
+        project: 'TEST',
+        jql: 'status = "Open" OR priority = "High"'
+      };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('project = "TEST" AND (status = "Open" OR priority = "High")');
+    });
+
+    it('should combine all filter types', () => {
+      const options = {
+        project: 'TEST',
+        assignee: 'currentUser',
+        reporter: 'jane',
+        status: 'Open',
+        type: 'Bug',
+        priority: 'High',
+        created: '-7d',
+        updated: '-1d'
+      };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe(
+        'project = "TEST" AND assignee = currentUser() AND reporter = "jane" ' +
+        'AND status = "Open" AND issuetype = "Bug" AND priority = "High" ' +
+        'AND created >= "-7d" AND updated >= "-1d"'
+      );
+    });
   });
 
   describe('escapeJqlString', () => {
