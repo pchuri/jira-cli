@@ -443,6 +443,40 @@ describe('Utils', () => {
       expect(jql).toBe('project = "TEST" AND (status = "Open" OR priority = "High")');
     });
 
+    it('should preserve trailing ORDER BY from custom jql', () => {
+      const options = { jql: 'status = "Open" ORDER BY created DESC' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('(status = "Open") ORDER BY created DESC');
+    });
+
+    it('should append ORDER BY from custom jql after structured filters', () => {
+      const options = {
+        project: 'TEST',
+        jql: 'status = "Open" ORDER BY priority DESC'
+      };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('project = "TEST" AND (status = "Open") ORDER BY priority DESC');
+    });
+
+    it('should handle custom jql that is only an ORDER BY clause', () => {
+      const options = { jql: 'ORDER BY created DESC' };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('ORDER BY created DESC');
+    });
+
+    it('should append ORDER BY from jql to structured filters without jql filter part', () => {
+      const options = {
+        project: 'TEST',
+        jql: 'ORDER BY created DESC'
+      };
+      const jql = Utils.buildJQL(options);
+
+      expect(jql).toBe('project = "TEST" ORDER BY created DESC');
+    });
+
     it('should combine all filter types', () => {
       const options = {
         project: 'TEST',
