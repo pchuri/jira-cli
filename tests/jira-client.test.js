@@ -378,4 +378,127 @@ describe('JiraClient', () => {
       await expect(client.getIssue('TEST-1')).rejects.toThrow('Network error');
     });
   });
+
+  // mTLS authentication tests
+  describe('mTLS authentication', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+
+    let tmpDir;
+    let certPath;
+    let keyPath;
+    let caPath;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jira-mtls-'));
+      certPath = path.join(tmpDir, 'client.pem');
+      keyPath = path.join(tmpDir, 'client.key');
+      caPath = path.join(tmpDir, 'ca.pem');
+      fs.writeFileSync(certPath, 'client-cert');
+      fs.writeFileSync(keyPath, 'client-key');
+      fs.writeFileSync(caPath, 'ca-cert');
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    test('should create client with mTLS auth without Authorization header', () => {
+      const mtlsConfig = {
+        server: 'https://jira.example.com',
+        authType: 'mtls',
+        mtls: {
+          caCert: caPath,
+          clientCert: certPath,
+          clientKey: keyPath
+        }
+      };
+
+      const mtlsClient = new JiraClient(mtlsConfig);
+
+      expect(mtlsClient.authType).toBe('mtls');
+      expect(mtlsClient.clientV2.defaults.headers['Authorization']).toBeUndefined();
+      expect(mtlsClient.clientV3.defaults.headers['Authorization']).toBeUndefined();
+      expect(mtlsClient.clientV2.defaults.httpsAgent).toBeDefined();
+      expect(mtlsClient.clientV3.defaults.httpsAgent).toBeDefined();
+    });
+
+    test('should configure httpsAgent with certificate files', () => {
+      const mtlsConfig = {
+        server: 'https://jira.example.com',
+        authType: 'mtls',
+        mtls: {
+          caCert: caPath,
+          clientCert: certPath,
+          clientKey: keyPath
+        }
+      };
+
+      const mtlsClient = new JiraClient(mtlsConfig);
+
+      expect(mtlsClient.clientV2.defaults.httpsAgent.options.ca.toString()).toBe('ca-cert');
+      expect(mtlsClient.clientV2.defaults.httpsAgent.options.cert.toString()).toBe('client-cert');
+      expect(mtlsClient.clientV2.defaults.httpsAgent.options.key.toString()).toBe('client-key');
+    });
+
+    test('should work without CA certificate (optional)', () => {
+      const mtlsConfig = {
+        server: 'https://jira.example.com',
+        authType: 'mtls',
+        mtls: {
+          clientCert: certPath,
+          clientKey: keyPath
+        }
+      };
+
+      const mtlsClient = new JiraClient(mtlsConfig);
+
+      expect(mtlsClient.clientV2.defaults.httpsAgent.options.cert.toString()).toBe('client-cert');
+      expect(mtlsClient.clientV2.defaults.httpsAgent.options.key.toString()).toBe('client-key');
+      expect(mtlsClient.clientV2.defaults.httpsAgent.options.ca).toBeUndefined();
+    });
+
+    test('should throw error for missing client certificate file', () => {
+      const mtlsConfig = {
+        server: 'https://jira.example.com',
+        authType: 'mtls',
+        mtls: {
+          clientCert: '/nonexistent/client.pem',
+          clientKey: keyPath
+        }
+      };
+
+      expect(() => new JiraClient(mtlsConfig)).toThrow('Client certificate file not found');
+    });
+
+    test('should throw error for missing client key file', () => {
+      const mtlsConfig = {
+        server: 'https://jira.example.com',
+        authType: 'mtls',
+        mtls: {
+          clientCert: certPath,
+          clientKey: '/nonexistent/client.key'
+        }
+      };
+
+      expect(() => new JiraClient(mtlsConfig)).toThrow('Client key file not found');
+    });
+
+    test('should provide certificate hints for 401 errors with mTLS', () => {
+      const mtlsConfig = {
+        server: 'https://jira.example.com',
+        authType: 'mtls',
+        mtls: {
+          clientCert: certPath,
+          clientKey: keyPath
+        }
+      };
+
+      const mtlsClient = new JiraClient(mtlsConfig);
+      const errorMessage = mtlsClient.formatJiraErrorMessage(401, {});
+
+      expect(errorMessage).toContain('client certificate');
+    });
+  });
 });

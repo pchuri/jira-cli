@@ -1,4 +1,7 @@
 const Config = require('../lib/config');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 describe('Config', () => {
   let config;
@@ -12,6 +15,10 @@ describe('Config', () => {
     delete process.env.JIRA_USERNAME;
     delete process.env.JIRA_API_TOKEN;
     delete process.env.JIRA_CLOUD_ID;
+    delete process.env.JIRA_AUTH_TYPE;
+    delete process.env.JIRA_TLS_CLIENT_CERT;
+    delete process.env.JIRA_TLS_CLIENT_KEY;
+    delete process.env.JIRA_TLS_CA_CERT;
   });
 
   describe('constructor', () => {
@@ -243,6 +250,118 @@ describe('Config', () => {
       const requiredConfig = config.getRequiredConfig();
       expect(requiredConfig.cloudId).toBe('env-cloud-id');
       expect(requiredConfig.server).toBe('https://test.atlassian.net');
+    });
+  });
+
+  describe('mTLS authentication support', () => {
+    let tmpDir;
+    let certPath;
+    let keyPath;
+    let caPath;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jira-config-mtls-'));
+      certPath = path.join(tmpDir, 'client.pem');
+      keyPath = path.join(tmpDir, 'client.key');
+      caPath = path.join(tmpDir, 'ca.pem');
+      fs.writeFileSync(certPath, 'client-cert');
+      fs.writeFileSync(keyPath, 'client-key');
+      fs.writeFileSync(caPath, 'ca-cert');
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should report as configured with mTLS environment variables', () => {
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      process.env.JIRA_TLS_CLIENT_CERT = certPath;
+      process.env.JIRA_TLS_CLIENT_KEY = keyPath;
+
+      expect(config.isConfigured()).toBe(true);
+    });
+
+    it('should get mTLS config from environment variables', () => {
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      process.env.JIRA_TLS_CLIENT_CERT = certPath;
+      process.env.JIRA_TLS_CLIENT_KEY = keyPath;
+      process.env.JIRA_TLS_CA_CERT = caPath;
+
+      const mtlsConfig = config.getRequiredConfig();
+      expect(mtlsConfig.server).toBe('https://jira.example.com');
+      expect(mtlsConfig.authType).toBe('mtls');
+      expect(mtlsConfig.mtls.clientCert).toBe(certPath);
+      expect(mtlsConfig.mtls.clientKey).toBe(keyPath);
+      expect(mtlsConfig.mtls.caCert).toBe(caPath);
+      expect(mtlsConfig.token).toBeUndefined();
+    });
+
+    it('should report as configured with mTLS stored config', () => {
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'mtls');
+      config.set('tlsClientCert', certPath);
+      config.set('tlsClientKey', keyPath);
+
+      expect(config.isConfigured()).toBe(true);
+    });
+
+    it('should get mTLS config from stored config', () => {
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'mtls');
+      config.set('tlsClientCert', certPath);
+      config.set('tlsClientKey', keyPath);
+      config.set('tlsCaCert', caPath);
+
+      const mtlsConfig = config.getRequiredConfig();
+      expect(mtlsConfig.server).toBe('https://jira.example.com');
+      expect(mtlsConfig.authType).toBe('mtls');
+      expect(mtlsConfig.mtls.clientCert).toBe(certPath);
+      expect(mtlsConfig.mtls.clientKey).toBe(keyPath);
+      expect(mtlsConfig.mtls.caCert).toBe(caPath);
+    });
+
+    it('should throw error for mTLS with missing client cert', () => {
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      process.env.JIRA_TLS_CLIENT_KEY = keyPath;
+
+      expect(() => config.getRequiredConfig()).toThrow('mTLS requires a client certificate');
+    });
+
+    it('should throw error for mTLS with missing client key', () => {
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      process.env.JIRA_TLS_CLIENT_CERT = certPath;
+
+      expect(() => config.getRequiredConfig()).toThrow('mTLS requires a client key');
+    });
+
+    it('should throw error for mTLS with nonexistent cert file', () => {
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      process.env.JIRA_TLS_CLIENT_CERT = '/nonexistent/client.pem';
+      process.env.JIRA_TLS_CLIENT_KEY = keyPath;
+
+      expect(() => config.getRequiredConfig()).toThrow('Client certificate file not found');
+    });
+
+    it('should validate mTLS config correctly', () => {
+      const validMtls = {
+        clientCert: certPath,
+        clientKey: keyPath,
+        caCert: caPath
+      };
+      expect(config.validateMtlsConfig(validMtls)).toEqual([]);
+
+      const invalidMtls = {
+        clientCert: '/nonexistent/cert.pem',
+        clientKey: keyPath
+      };
+      const errors = config.validateMtlsConfig(invalidMtls);
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors[0]).toContain('not found');
     });
   });
 });

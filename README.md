@@ -183,6 +183,34 @@ https://your-site.atlassian.net/_edge/tenant_info
 
 The response contains a `cloudId` field. Copy it into `--cloud-id` or `JIRA_CLOUD_ID`.
 
+### mTLS Authentication (Client Certificate)
+
+For self-hosted or reverse-proxied JIRA deployments that authenticate at the TLS layer with client certificates:
+
+#### Command Line Configuration
+```bash
+jira config --server https://jira.example.com \
+            --auth-type mtls \
+            --tls-client-cert ~/.certs/client.pem \
+            --tls-client-key ~/.certs/client.key \
+            --tls-ca-cert ~/.certs/ca-chain.pem
+```
+
+#### Environment Variables
+```bash
+export JIRA_HOST="jira.example.com"
+export JIRA_AUTH_TYPE="mtls"
+export JIRA_TLS_CLIENT_CERT="~/.certs/client.pem"
+export JIRA_TLS_CLIENT_KEY="~/.certs/client.key"
+export JIRA_TLS_CA_CERT="~/.certs/ca-chain.pem"  # optional
+```
+
+**Notes:**
+- mTLS mode does not send an `Authorization` header; authentication happens at the TLS layer
+- The CA certificate is optional if your client certificate is signed by a well-known CA
+- mTLS is commonly used in enterprise environments with private certificate authorities
+- Paths beginning with `~/` are expanded to your home directory; certificate files are read at startup, so update the cert paths if they change
+
 ### Getting Your API Token
 
 1. Go to [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens)
