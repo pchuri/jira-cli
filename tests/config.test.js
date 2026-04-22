@@ -211,6 +211,20 @@ describe('Config', () => {
       expect(bearerConfig.username).toBe('');
       expect(config.isConfigured()).toBe(true);
     });
+
+    it('should infer basic auth for legacy config without explicit authType', () => {
+      // Legacy stored config predating the --auth-type flag: only server,
+      // username, and token. getRequiredConfig() must still infer basic auth
+      // instead of defaulting to bearer.
+      config.set('server', 'https://test.atlassian.net');
+      config.set('username', 'testuser');
+      config.set('token', 'testtoken');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.authType).toBe('basic');
+      expect(requiredConfig.username).toBe('testuser');
+      expect(requiredConfig.token).toBe('testtoken');
+    });
   });
 
   describe('scoped API token (cloudId) support', () => {
@@ -362,6 +376,101 @@ describe('Config', () => {
       const errors = config.validateMtlsConfig(invalidMtls);
       expect(errors.length).toBeGreaterThan(0);
       expect(errors[0]).toContain('not found');
+    });
+
+    it('should report as not configured when authType is mtls but cert/key are missing', () => {
+      // Previously, isConfigured() only checked (server && token) and would
+      // return true for an mTLS config with a stale token, even though
+      // getRequiredConfig() would then throw on the missing cert.
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'mtls');
+      config.set('token', 'stale-token');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as configured for mTLS without a token', () => {
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'mtls');
+      config.set('tlsClientCert', certPath);
+      config.set('tlsClientKey', keyPath);
+
+      expect(config.isConfigured()).toBe(true);
+    });
+  });
+
+  describe('explicit basic auth validation', () => {
+    it('should report as not configured when authType is basic but username is missing', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('token', 'testtoken');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as not configured when authType is basic but token is missing', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', 'testuser');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should throw from getRequiredConfig when explicit basic auth has no username', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('token', 'testtoken');
+
+      expect(() => config.getRequiredConfig()).toThrow(/Basic auth/);
+      expect(() => config.getRequiredConfig()).toThrow(/Missing: username/);
+    });
+
+    it('should throw from getRequiredConfig when explicit basic auth has no token', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', 'testuser');
+
+      expect(() => config.getRequiredConfig()).toThrow(/Basic auth/);
+      expect(() => config.getRequiredConfig()).toThrow(/Missing: token/);
+    });
+
+    it('should return basic auth config when all fields are present', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', 'testuser');
+      config.set('token', 'testtoken');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.authType).toBe('basic');
+      expect(requiredConfig.username).toBe('testuser');
+      expect(requiredConfig.token).toBe('testtoken');
+    });
+  });
+
+  describe('explicit bearer auth', () => {
+    it('should report as configured with explicit bearer authType, server, and token', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'bearer');
+      config.set('token', 'testtoken');
+
+      expect(config.isConfigured()).toBe(true);
+    });
+
+    it('should report as not configured with explicit bearer authType but no token', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'bearer');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should return bearer auth config from getRequiredConfig', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'bearer');
+      config.set('token', 'testtoken');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.authType).toBe('bearer');
+      expect(requiredConfig.token).toBe('testtoken');
     });
   });
 });

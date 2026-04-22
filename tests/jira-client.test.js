@@ -139,6 +139,45 @@ describe('JiraClient', () => {
         password: 'scoped-token'
       });
     });
+
+    test('should throw when explicit basic auth is used with an empty username', () => {
+      // Previously an explicit authType=basic with no username silently fell
+      // back to Bearer auth, masking misconfiguration.
+      const badConfig = {
+        server: 'https://test.atlassian.net',
+        authType: 'basic',
+        username: '',
+        token: 'test-token'
+      };
+
+      expect(() => new JiraClient(badConfig)).toThrow(/Basic auth/);
+      expect(() => new JiraClient(badConfig)).toThrow(/username/i);
+    });
+
+    test('should throw when explicit basic auth is used without a username property', () => {
+      const badConfig = {
+        server: 'https://test.atlassian.net',
+        authType: 'basic',
+        token: 'test-token'
+      };
+
+      expect(() => new JiraClient(badConfig)).toThrow(/Basic auth/);
+    });
+
+    test('should still use Bearer auth for legacy config with empty username and no explicit authType', () => {
+      // Confirms the fail-fast only fires for *explicit* basic auth; legacy
+      // configs without an authType keep their previous inference behavior.
+      const legacyConfig = {
+        server: 'https://test.atlassian.net',
+        username: '',
+        token: 'test-token'
+      };
+
+      const legacyClient = new JiraClient(legacyConfig);
+
+      expect(legacyClient.authType).toBe('bearer');
+      expect(legacyClient.clientV2.defaults.headers['Authorization']).toBe('Bearer test-token');
+    });
   });
 
   describe('API methods', () => {
