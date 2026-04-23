@@ -397,6 +397,158 @@ describe('Config', () => {
 
       expect(config.isConfigured()).toBe(true);
     });
+
+    it('should report as not configured when env mTLS is incomplete even if JIRA_API_TOKEN is set', () => {
+      // When JIRA_AUTH_TYPE=mtls is set, that choice is authoritative.
+      // Previously, a stale JIRA_API_TOKEN would cause isConfigured() to
+      // return true via the JIRA_HOST + JIRA_API_TOKEN fallback even when
+      // the required client cert/key env vars were missing.
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      process.env.JIRA_API_TOKEN = 'stale-token';
+      // Intentionally omit JIRA_TLS_CLIENT_CERT / JIRA_TLS_CLIENT_KEY
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as configured for env mTLS when all required vars are set, even with a stale token', () => {
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      process.env.JIRA_TLS_CLIENT_CERT = certPath;
+      process.env.JIRA_TLS_CLIENT_KEY = keyPath;
+      process.env.JIRA_API_TOKEN = 'stale-token';
+
+      expect(config.isConfigured()).toBe(true);
+    });
+
+    it('should report as not configured for partial env mTLS (cert only) even with a stale JIRA_API_TOKEN', () => {
+      // Partial mTLS env (client cert set but client key missing) must not
+      // fall through to the JIRA_HOST + JIRA_API_TOKEN path.
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      process.env.JIRA_TLS_CLIENT_CERT = certPath;
+      process.env.JIRA_API_TOKEN = 'stale-token';
+      // Intentionally omit JIRA_TLS_CLIENT_KEY
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should let env mTLS override a complete stored basic-auth config', () => {
+      // Env selects mTLS authoritatively. Even if stored config is a fully
+      // valid basic-auth setup, an incomplete env mTLS selection should report
+      // the CLI as not configured rather than silently using the stored config.
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', 'testuser');
+      config.set('token', 'testtoken');
+
+      process.env.JIRA_HOST = 'https://jira.example.com';
+      process.env.JIRA_AUTH_TYPE = 'mtls';
+      // No cert/key in env
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as not configured when stored mTLS cert/key are empty strings', () => {
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'mtls');
+      config.set('tlsClientCert', '');
+      config.set('tlsClientKey', '');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+  });
+
+  describe('empty-value validation', () => {
+    it('should report as not configured when stored basic auth has an empty username', () => {
+      // has() only checks key presence; an empty string previously slipped
+      // through. isConfigured() should now require non-empty values.
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', '');
+      config.set('token', 'testtoken');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as not configured when stored basic auth has an empty token', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', 'testuser');
+      config.set('token', '');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should throw from getRequiredConfig when explicit basic auth has an empty username', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', '');
+      config.set('token', 'testtoken');
+
+      expect(() => config.getRequiredConfig()).toThrow(/Missing: username/);
+    });
+
+    it('should throw from getRequiredConfig when explicit basic auth has an empty token', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', 'testuser');
+      config.set('token', '');
+
+      expect(() => config.getRequiredConfig()).toThrow(/Missing: token/);
+    });
+
+    it('should report as not configured when stored bearer auth has an empty token', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'bearer');
+      config.set('token', '');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as not configured when legacy stored config has an empty token', () => {
+      // Legacy config (no explicit authType) with an empty token should not
+      // pass isConfigured() either.
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', '');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as not configured when stored bearer auth has a whitespace-only token', () => {
+      // End-to-end check that the hasNonEmpty helper is actually wired into
+      // isConfigured() for the bearer branch - a future change that skips the
+      // helper would be caught here.
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'bearer');
+      config.set('token', '   ');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as not configured for legacy stored config with username set but empty token', () => {
+      // Legacy config (no explicit authType) that looks like basic auth but
+      // has an empty token must not slip through the final `hasNonEmpty('token')`
+      // check at the end of isConfigured().
+      config.set('server', 'https://test.atlassian.net');
+      config.set('username', 'testuser');
+      config.set('token', '');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should expose a hasNonEmpty helper that rejects empty and whitespace-only strings', () => {
+      config.set('username', '');
+      expect(config.hasNonEmpty('username')).toBe(false);
+
+      config.set('username', '   ');
+      expect(config.hasNonEmpty('username')).toBe(false);
+
+      config.set('username', 'testuser');
+      expect(config.hasNonEmpty('username')).toBe(true);
+
+      expect(config.hasNonEmpty('nonexistent')).toBe(false);
+    });
   });
 
   describe('explicit basic auth validation', () => {
