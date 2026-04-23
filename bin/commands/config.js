@@ -8,6 +8,10 @@ function createConfigCommand(factory) {
     .option('--server <url>', 'set JIRA server URL')
     .option('--username <username>', 'set username')
     .option('--token <token>', 'set API token')
+    .option('--auth-type <type>', 'authentication type (basic, bearer, or mtls)')
+    .option('--tls-client-cert <path>', 'client certificate for mTLS authentication')
+    .option('--tls-client-key <path>', 'client private key for mTLS authentication')
+    .option('--tls-ca-cert <path>', 'CA certificate for mTLS authentication (optional)')
     .action(async (options) => {
       const io = factory.getIOStreams();
       const config = factory.getConfig();
@@ -22,7 +26,7 @@ function createConfigCommand(factory) {
           return;
         }
 
-        if (options.server || options.username || options.token) {
+        if (options.server || options.username || options.token || options.authType || options.tlsClientCert || options.tlsClientKey || options.tlsCaCert) {
           // Set individual configuration values
           if (options.server) {
             config.set('server', options.server.replace(/\/$/, ''));
@@ -37,6 +41,43 @@ function createConfigCommand(factory) {
           if (options.token) {
             config.set('token', options.token);
             io.success('API token updated');
+          }
+
+          if (options.authType) {
+            const authType = options.authType.toLowerCase();
+            if (!['basic', 'bearer', 'mtls'].includes(authType)) {
+              throw new Error('--auth-type must be "basic", "bearer", or "mtls"');
+            }
+            config.set('authType', authType);
+            io.success(`Auth type set to: ${authType}`);
+          }
+
+          // mTLS certificate configuration
+          if (options.tlsClientCert) {
+            const fs = require('fs');
+            if (!fs.existsSync(options.tlsClientCert)) {
+              throw new Error(`Client certificate file not found: ${options.tlsClientCert}`);
+            }
+            config.set('tlsClientCert', options.tlsClientCert);
+            io.success('TLS client certificate configured');
+          }
+
+          if (options.tlsClientKey) {
+            const fs = require('fs');
+            if (!fs.existsSync(options.tlsClientKey)) {
+              throw new Error(`Client key file not found: ${options.tlsClientKey}`);
+            }
+            config.set('tlsClientKey', options.tlsClientKey);
+            io.success('TLS client key configured');
+          }
+
+          if (options.tlsCaCert) {
+            const fs = require('fs');
+            if (!fs.existsSync(options.tlsCaCert)) {
+              throw new Error(`CA certificate file not found: ${options.tlsCaCert}`);
+            }
+            config.set('tlsCaCert', options.tlsCaCert);
+            io.success('TLS CA certificate configured');
           }
 
           // Test connection if all required fields are present
@@ -59,13 +100,20 @@ function createConfigCommand(factory) {
             '  jira config --server <url> --token <token>\n\n' +
             'Basic authentication (optional):\n' +
             '  jira config --server <url> --username <email> --token <token>\n\n' +
+            'mTLS authentication (for self-hosted/reverse-proxied Jira):\n' +
+            '  jira config --server <url> --auth-type mtls \\\n' +
+            '    --tls-client-cert /path/to/client.pem \\\n' +
+            '    --tls-client-key /path/to/client.key \\\n' +
+            '    --tls-ca-cert /path/to/ca.pem\n\n' +
             'Or set using individual commands:\n' +
             '  jira config set server <url>\n' +
             '  jira config set token <token>\n' +
             '  jira config set username <email>  # optional for Basic auth\n\n' +
             'Or use environment variables:\n' +
             '  Bearer auth: export JIRA_HOST=<url> JIRA_API_TOKEN=<token>\n' +
-            '  Basic auth: export JIRA_HOST=<url> JIRA_API_TOKEN=<token> JIRA_USERNAME=<email>'
+            '  Basic auth: export JIRA_HOST=<url> JIRA_API_TOKEN=<token> JIRA_USERNAME=<email>\n' +
+            '  mTLS auth: export JIRA_HOST=<url> JIRA_AUTH_TYPE=mtls \\\n' +
+            '             JIRA_TLS_CLIENT_CERT=<path> JIRA_TLS_CLIENT_KEY=<path>'
           );
         }
 

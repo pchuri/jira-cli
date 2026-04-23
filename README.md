@@ -143,6 +143,33 @@ export JIRA_API_TOKEN="your-api-token"
 export JIRA_API_VERSION="auto"  # optional: auto (default), 2, 3
 ```
 
+### Option 3: mTLS Authentication (Client Certificate)
+
+For self-hosted or reverse-proxied JIRA deployments that authenticate at the TLS layer with client certificates:
+
+#### Command Line Configuration
+```bash
+jira config --server https://jira.example.com \
+            --auth-type mtls \
+            --tls-client-cert ~/.certs/client.pem \
+            --tls-client-key ~/.certs/client.key \
+            --tls-ca-cert ~/.certs/ca-chain.pem
+```
+
+#### Environment Variables
+```bash
+export JIRA_HOST="jira.example.com"
+export JIRA_AUTH_TYPE="mtls"
+export JIRA_TLS_CLIENT_CERT="~/.certs/client.pem"
+export JIRA_TLS_CLIENT_KEY="~/.certs/client.key"
+export JIRA_TLS_CA_CERT="~/.certs/ca-chain.pem"  # optional
+```
+
+**Notes:**
+- mTLS mode does not send an `Authorization` header; authentication happens at the TLS layer
+- The CA certificate is optional if your client certificate is signed by a well-known CA
+- mTLS is commonly used in enterprise environments with private certificate authorities
+
 ### Getting Your API Token
 
 1. Go to [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens)
