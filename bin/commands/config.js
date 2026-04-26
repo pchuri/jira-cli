@@ -8,6 +8,7 @@ function createConfigCommand(factory) {
     .option('--server <url>', 'set JIRA server URL')
     .option('--username <username>', 'set username')
     .option('--token <token>', 'set API token')
+    .option('--cloud-id <cloudId>', 'set Atlassian Cloud ID for scoped API tokens')
     .action(async (options) => {
       const io = factory.getIOStreams();
       const config = factory.getConfig();
@@ -22,21 +23,26 @@ function createConfigCommand(factory) {
           return;
         }
 
-        if (options.server || options.username || options.token) {
+        if (options.server || options.username || options.token || options.cloudId) {
           // Set individual configuration values
           if (options.server) {
             config.set('server', options.server.replace(/\/$/, ''));
             io.success(`Server set to: ${options.server}`);
           }
-          
+
           if (options.username) {
             config.set('username', options.username);
             io.success(`Username set to: ${options.username}`);
           }
-          
+
           if (options.token) {
             config.set('token', options.token);
             io.success('API token updated');
+          }
+
+          if (options.cloudId) {
+            config.set('cloudId', options.cloudId);
+            io.success(`Cloud ID set to: ${options.cloudId} (requests will route via Atlassian Platform API Gateway)`);
           }
 
           // Test connection if all required fields are present
@@ -59,13 +65,17 @@ function createConfigCommand(factory) {
             '  jira config --server <url> --token <token>\n\n' +
             'Basic authentication (optional):\n' +
             '  jira config --server <url> --username <email> --token <token>\n\n' +
+            'Scoped API token (Atlassian Cloud, recommended for new tokens):\n' +
+            '  jira config --server <url> --username <email> --token <scoped-token> --cloud-id <cloudId>\n\n' +
             'Or set using individual commands:\n' +
             '  jira config set server <url>\n' +
             '  jira config set token <token>\n' +
-            '  jira config set username <email>  # optional for Basic auth\n\n' +
+            '  jira config set username <email>  # optional for Basic auth\n' +
+            '  jira config set cloudId <cloudId> # optional, enables scoped tokens\n\n' +
             'Or use environment variables:\n' +
             '  Bearer auth: export JIRA_HOST=<url> JIRA_API_TOKEN=<token>\n' +
-            '  Basic auth: export JIRA_HOST=<url> JIRA_API_TOKEN=<token> JIRA_USERNAME=<email>'
+            '  Basic auth: export JIRA_HOST=<url> JIRA_API_TOKEN=<token> JIRA_USERNAME=<email>\n' +
+            '  Scoped token: also export JIRA_CLOUD_ID=<cloudId>'
           );
         }
 
@@ -112,7 +122,7 @@ function createConfigCommand(factory) {
         io.success(`${key} set successfully`);
         
         // Test connection if setting critical values
-        if (['server', 'username', 'token'].includes(key) && config.isConfigured()) {
+        if (['server', 'username', 'token', 'cloudId'].includes(key) && config.isConfigured()) {
           io.info('Testing connection...');
           const testResult = await config.testConfig();
           
@@ -149,7 +159,7 @@ function createConfigCommand(factory) {
 
 function getConfigAction(options) {
   if (options.show) return 'show';
-  if (options.server || options.username || options.token) return 'set';
+  if (options.server || options.username || options.token || options.cloudId) return 'set';
   return 'interactive';
 }
 

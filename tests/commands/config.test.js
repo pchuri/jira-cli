@@ -83,6 +83,11 @@ describe('ConfigCommand', () => {
       const tokenOption = configCommand.options.find(opt => opt.long === '--token');
       expect(tokenOption).toBeDefined();
     });
+
+    it('should have cloud-id option', () => {
+      const cloudIdOption = configCommand.options.find(opt => opt.long === '--cloud-id');
+      expect(cloudIdOption).toBeDefined();
+    });
   });
 
   describe('Bearer authentication support', () => {
@@ -112,6 +117,31 @@ describe('ConfigCommand', () => {
       ]);
 
       expect(mockConfig.testConfig).toHaveBeenCalled();
+    });
+  });
+
+  describe('scoped API token (--cloud-id) support', () => {
+    it('should set cloudId when --cloud-id is provided', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--server', 'https://test.atlassian.net',
+        '--username', 'test@example.com',
+        '--token', 'scoped-token',
+        '--cloud-id', 'abcd-1234'
+      ]);
+
+      expect(mockConfig.set).toHaveBeenCalledWith('cloudId', 'abcd-1234');
+    });
+
+    it('should accept --cloud-id alone without other flags', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--cloud-id', 'abcd-1234'
+      ]);
+
+      expect(mockConfig.set).toHaveBeenCalledWith('cloudId', 'abcd-1234');
     });
   });
 });
