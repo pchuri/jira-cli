@@ -11,6 +11,7 @@ describe('Config', () => {
     delete process.env.JIRA_DOMAIN;
     delete process.env.JIRA_USERNAME;
     delete process.env.JIRA_API_TOKEN;
+    delete process.env.JIRA_CLOUD_ID;
   });
 
   describe('constructor', () => {
@@ -202,6 +203,46 @@ describe('Config', () => {
       const bearerConfig = config.getRequiredConfig();
       expect(bearerConfig.username).toBe('');
       expect(config.isConfigured()).toBe(true);
+    });
+  });
+
+  describe('scoped API token (cloudId) support', () => {
+    it('should default cloudId to empty string when not set', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', 'testtoken');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.cloudId).toBe('');
+    });
+
+    it('should return cloudId from stored config', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('username', 'test@example.com');
+      config.set('token', 'scoped-token');
+      config.set('cloudId', 'abcd-1234');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.cloudId).toBe('abcd-1234');
+    });
+
+    it('should prefer JIRA_CLOUD_ID env var over stored config', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', 'testtoken');
+      config.set('cloudId', 'stored-cloud-id');
+      process.env.JIRA_CLOUD_ID = 'env-cloud-id';
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.cloudId).toBe('env-cloud-id');
+    });
+
+    it('should pick up cloudId via JIRA_CLOUD_ID alongside JIRA_HOST env vars', () => {
+      process.env.JIRA_HOST = 'https://test.atlassian.net';
+      process.env.JIRA_API_TOKEN = 'scoped-token';
+      process.env.JIRA_CLOUD_ID = 'env-cloud-id';
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.cloudId).toBe('env-cloud-id');
+      expect(requiredConfig.server).toBe('https://test.atlassian.net');
     });
   });
 });

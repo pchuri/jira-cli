@@ -84,6 +84,61 @@ describe('JiraClient', () => {
       expect(basicClient.clientV2.defaults.headers['Authorization']).toBeUndefined();
       expect(basicClient.clientV3.defaults.headers['Authorization']).toBeUndefined();
     });
+
+    test('should route through Atlassian Platform API Gateway when cloudId is set', () => {
+      const scopedConfig = {
+        server: 'https://test.atlassian.net',
+        username: 'test@example.com',
+        token: 'scoped-token',
+        cloudId: 'abcd-1234-cloud-id'
+      };
+
+      const scopedClient = new JiraClient(scopedConfig);
+
+      expect(scopedClient.useGateway).toBe(true);
+      expect(scopedClient.cloudId).toBe('abcd-1234-cloud-id');
+      expect(scopedClient.clientV2.defaults.baseURL).toBe(
+        'https://api.atlassian.com/ex/jira/abcd-1234-cloud-id/rest/api/2'
+      );
+      expect(scopedClient.clientV3.defaults.baseURL).toBe(
+        'https://api.atlassian.com/ex/jira/abcd-1234-cloud-id/rest/api/3'
+      );
+      expect(scopedClient.agileClient.defaults.baseURL).toBe(
+        'https://api.atlassian.com/ex/jira/abcd-1234-cloud-id/rest/agile/1.0'
+      );
+    });
+
+    test('should keep direct routing when cloudId is empty or missing', () => {
+      const directConfig = {
+        server: 'https://test.atlassian.net',
+        username: 'test@example.com',
+        token: 'classic-token',
+        cloudId: ''
+      };
+
+      const directClient = new JiraClient(directConfig);
+
+      expect(directClient.useGateway).toBe(false);
+      expect(directClient.clientV2.defaults.baseURL).toBe('https://test.atlassian.net/rest/api/2');
+      expect(directClient.clientV3.defaults.baseURL).toBe('https://test.atlassian.net/rest/api/3');
+      expect(directClient.agileClient.defaults.baseURL).toBe('https://test.atlassian.net/rest/agile/1.0');
+    });
+
+    test('should preserve auth credentials when routing through gateway', () => {
+      const scopedConfig = {
+        server: 'https://test.atlassian.net',
+        username: 'test@example.com',
+        token: 'scoped-token',
+        cloudId: 'abcd-1234'
+      };
+
+      const scopedClient = new JiraClient(scopedConfig);
+
+      expect(scopedClient.clientV3.defaults.auth).toEqual({
+        username: 'test@example.com',
+        password: 'scoped-token'
+      });
+    });
   });
 
   describe('API methods', () => {

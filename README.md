@@ -62,6 +62,9 @@ npm link
    export JIRA_API_TOKEN=your-api-token
    export JIRA_USERNAME=your-email@company.com
    export JIRA_API_VERSION=auto  # optional: auto (default), 2, 3
+
+   # Scoped API token (Atlassian Cloud) — also set Cloud ID
+   export JIRA_CLOUD_ID=your-cloud-id  # routes through Atlassian Platform API Gateway
    ```
 
 4. **Verify connection:**
@@ -82,10 +85,11 @@ npm link
 
 ## Configuration
 
-JIRA CLI supports two authentication modes:
+JIRA CLI supports the following authentication modes:
 
 1. **Bearer Token Authentication (Recommended)** - Uses API token directly
 2. **Basic Authentication** - Uses username + API token (legacy)
+3. **Scoped API Token (Atlassian Cloud)** - Basic auth + Cloud ID, routed through the Atlassian Platform API Gateway. Use this for Atlassian's newer scoped API tokens.
 
 ### Option 1: Command Line Configuration
 
@@ -99,10 +103,17 @@ jira config --server https://yourcompany.atlassian.net \
             --username your-email@company.com \
             --token your-api-token
 
+# Scoped API token (Atlassian Cloud) — set Cloud ID to route via the Platform API Gateway
+jira config --server https://yourcompany.atlassian.net \
+            --username your-email@company.com \
+            --token your-scoped-api-token \
+            --cloud-id your-cloud-id
+
 # Or set individual values
 jira config set server https://yourcompany.atlassian.net
 jira config set token your-api-token
 jira config set username your-email@company.com  # optional
+jira config set cloudId your-cloud-id            # optional, enables scoped tokens
 jira config set apiVersion auto  # optional: auto (default), 2, 3
 
 # Show current configuration
@@ -143,12 +154,43 @@ export JIRA_API_TOKEN="your-api-token"
 export JIRA_API_VERSION="auto"  # optional: auto (default), 2, 3
 ```
 
+### Scoped API Tokens (Atlassian Cloud)
+
+Atlassian recommends using **scoped API tokens** over classic (unscoped) tokens. Scoped tokens require requests to go through the **Atlassian Platform API Gateway** at `https://api.atlassian.com/ex/jira/{cloudId}` instead of `https://{your-site}.atlassian.net`.
+
+To use a scoped token, configure your **Cloud ID** in addition to the usual server, username, and token:
+
+```bash
+# Via flags
+jira config --server https://yourcompany.atlassian.net \
+            --username your-email@company.com \
+            --token your-scoped-api-token \
+            --cloud-id your-cloud-id
+
+# Or via env vars (works with both JIRA_HOST and JIRA_DOMAIN formats)
+export JIRA_CLOUD_ID="your-cloud-id"
+```
+
+When `cloudId` is set, all REST API and Agile API requests are automatically routed through the Platform API Gateway. Without it, requests use the configured server URL directly (compatible with classic tokens, Jira Data Center, and Jira Server).
+
+#### Finding Your Cloud ID
+
+You can fetch your Cloud ID without authentication by visiting (or `curl`-ing):
+
+```
+https://your-site.atlassian.net/_edge/tenant_info
+```
+
+The response contains a `cloudId` field. Copy it into `--cloud-id` or `JIRA_CLOUD_ID`.
+
 ### Getting Your API Token
 
 1. Go to [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens)
 2. Click "Create API token"
 3. Give it a label (e.g., "jira-cli")
 4. Copy the generated token
+
+For **scoped tokens**, you can choose specific Jira scopes (e.g., `read:jira-work`, `write:jira-work`) when creating the token. Scoped tokens require Cloud ID configuration — see [Scoped API Tokens (Atlassian Cloud)](#scoped-api-tokens-atlassian-cloud).
 
 ## Usage
 
