@@ -1,3 +1,10 @@
+# [2.5.0](https://github.com/pchuri/jira-cli/compare/v2.4.2...v2.5.0) (2026-04-26)
+
+
+### Features
+
+* **auth:** support Atlassian scoped API tokens via Cloud ID ([#29](https://github.com/pchuri/jira-cli/issues/29)) ([b2cddf3](https://github.com/pchuri/jira-cli/commit/b2cddf304fc47b002ca5231968c40afb614a5c06)), closes [#28](https://github.com/pchuri/jira-cli/issues/28)
+
 ## [2.4.2](https://github.com/pchuri/jira-cli/compare/v2.4.1...v2.4.2) (2026-04-20)
 
 
