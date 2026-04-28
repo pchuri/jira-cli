@@ -1,4 +1,7 @@
 const createConfigCommand = require('../../bin/commands/config');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 describe('ConfigCommand', () => {
   let mockFactory;
@@ -88,6 +91,26 @@ describe('ConfigCommand', () => {
       const cloudIdOption = configCommand.options.find(opt => opt.long === '--cloud-id');
       expect(cloudIdOption).toBeDefined();
     });
+
+    it('should have auth-type option', () => {
+      const authTypeOption = configCommand.options.find(opt => opt.long === '--auth-type');
+      expect(authTypeOption).toBeDefined();
+    });
+
+    it('should have tls-client-cert option', () => {
+      const opt = configCommand.options.find(o => o.long === '--tls-client-cert');
+      expect(opt).toBeDefined();
+    });
+
+    it('should have tls-client-key option', () => {
+      const opt = configCommand.options.find(o => o.long === '--tls-client-key');
+      expect(opt).toBeDefined();
+    });
+
+    it('should have tls-ca-cert option', () => {
+      const opt = configCommand.options.find(o => o.long === '--tls-ca-cert');
+      expect(opt).toBeDefined();
+    });
   });
 
   describe('Bearer authentication support', () => {
@@ -142,6 +165,88 @@ describe('ConfigCommand', () => {
       ]);
 
       expect(mockConfig.set).toHaveBeenCalledWith('cloudId', 'abcd-1234');
+    });
+  });
+
+  describe('mTLS authentication support', () => {
+    let tmpDir;
+    let certPath;
+    let keyPath;
+    let caPath;
+    let exitSpy;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'jira-config-cmd-mtls-'));
+      certPath = path.join(tmpDir, 'client.pem');
+      keyPath = path.join(tmpDir, 'client.key');
+      caPath = path.join(tmpDir, 'ca.pem');
+      fs.writeFileSync(certPath, 'cert');
+      fs.writeFileSync(keyPath, 'key');
+      fs.writeFileSync(caPath, 'ca');
+      exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      exitSpy.mockRestore();
+    });
+
+    it('should set authType=mtls and store cert/key/ca paths', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--server', 'https://jira.example.com',
+        '--auth-type', 'mtls',
+        '--tls-client-cert', certPath,
+        '--tls-client-key', keyPath,
+        '--tls-ca-cert', caPath
+      ]);
+
+      expect(mockConfig.set).toHaveBeenCalledWith('authType', 'mtls');
+      expect(mockConfig.set).toHaveBeenCalledWith('tlsClientCert', certPath);
+      expect(mockConfig.set).toHaveBeenCalledWith('tlsClientKey', keyPath);
+      expect(mockConfig.set).toHaveBeenCalledWith('tlsCaCert', caPath);
+    });
+
+    it('should reject invalid --auth-type values', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--auth-type', 'invalid'
+      ]);
+
+      expect(mockIOStreams.error).toHaveBeenCalledWith(
+        expect.stringContaining('--auth-type must be')
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(mockConfig.set).not.toHaveBeenCalledWith('authType', expect.anything());
+    });
+
+    it('should error when --tls-client-cert points to a missing file', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--tls-client-cert', '/definitely/does/not/exist/cert.pem'
+      ]);
+
+      expect(mockIOStreams.error).toHaveBeenCalledWith(
+        expect.stringContaining('Client certificate file not found')
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(mockConfig.set).not.toHaveBeenCalledWith('tlsClientCert', expect.anything());
+    });
+
+    it('should error when --tls-client-key points to a missing file', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--tls-client-key', '/definitely/does/not/exist/client.key'
+      ]);
+
+      expect(mockIOStreams.error).toHaveBeenCalledWith(
+        expect.stringContaining('Client key file not found')
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
 });

@@ -555,4 +555,33 @@ describe('Utils', () => {
       expect(Utils.escapeJqlString('TEST-123')).toBe('TEST-123');
     });
   });
+
+  describe('expandHomePath', () => {
+    const os = require('os');
+    const path = require('path');
+
+    it('should expand a leading ~/ to the home directory', () => {
+      const expanded = Utils.expandHomePath('~/.certs/client.pem');
+      expect(expanded).toBe(path.join(os.homedir(), '.certs/client.pem'));
+    });
+
+    it('should expand a bare ~ to the home directory', () => {
+      expect(Utils.expandHomePath('~')).toBe(os.homedir());
+    });
+
+    it('should leave absolute and relative paths unchanged', () => {
+      expect(Utils.expandHomePath('/etc/ssl/cert.pem')).toBe('/etc/ssl/cert.pem');
+      expect(Utils.expandHomePath('./certs/client.pem')).toBe('./certs/client.pem');
+    });
+
+    it('should not expand ~ that does not start the path', () => {
+      expect(Utils.expandHomePath('/tmp/~weird')).toBe('/tmp/~weird');
+    });
+
+    it('should pass through non-string and empty values', () => {
+      expect(Utils.expandHomePath('')).toBe('');
+      expect(Utils.expandHomePath(undefined)).toBe(undefined);
+      expect(Utils.expandHomePath(null)).toBe(null);
+    });
+  });
 });
