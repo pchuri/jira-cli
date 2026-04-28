@@ -1,3 +1,10 @@
+# [2.6.0](https://github.com/pchuri/jira-cli/compare/v2.5.0...v2.6.0) (2026-04-28)
+
+
+### Features
+
+* add mTLS authentication support ([#27](https://github.com/pchuri/jira-cli/issues/27)) ([e62a8ca](https://github.com/pchuri/jira-cli/commit/e62a8cab8db1198dd5ef011f95bf068de784b64b))
+
 # [2.5.0](https://github.com/pchuri/jira-cli/compare/v2.4.2...v2.5.0) (2026-04-26)
 
 
