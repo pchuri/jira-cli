@@ -1,4 +1,6 @@
 const { Command } = require('commander');
+const fs = require('fs');
+const { expandHomePath } = require('../../lib/utils');
 
 function createConfigCommand(factory) {
   const command = new Command('config')
@@ -69,8 +71,7 @@ function createConfigCommand(factory) {
 
           // mTLS certificate configuration
           if (options.tlsClientCert) {
-            const fs = require('fs');
-            if (!fs.existsSync(options.tlsClientCert)) {
+            if (!fs.existsSync(expandHomePath(options.tlsClientCert))) {
               throw new Error(`Client certificate file not found: ${options.tlsClientCert}`);
             }
             config.set('tlsClientCert', options.tlsClientCert);
@@ -78,8 +79,7 @@ function createConfigCommand(factory) {
           }
 
           if (options.tlsClientKey) {
-            const fs = require('fs');
-            if (!fs.existsSync(options.tlsClientKey)) {
+            if (!fs.existsSync(expandHomePath(options.tlsClientKey))) {
               throw new Error(`Client key file not found: ${options.tlsClientKey}`);
             }
             config.set('tlsClientKey', options.tlsClientKey);
@@ -87,8 +87,7 @@ function createConfigCommand(factory) {
           }
 
           if (options.tlsCaCert) {
-            const fs = require('fs');
-            if (!fs.existsSync(options.tlsCaCert)) {
+            if (!fs.existsSync(expandHomePath(options.tlsCaCert))) {
               throw new Error(`CA certificate file not found: ${options.tlsCaCert}`);
             }
             config.set('tlsCaCert', options.tlsCaCert);
