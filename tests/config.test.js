@@ -265,6 +265,23 @@ describe('Config', () => {
       expect(requiredConfig.cloudId).toBe('env-cloud-id');
       expect(requiredConfig.server).toBe('https://test.atlassian.net');
     });
+
+    it('should include cloudId in the explicit basic-auth getRequiredConfig output', () => {
+      // The explicit-basic-auth branch was previously dropping cloudId, which
+      // meant scoped tokens would silently route around the gateway whenever
+      // the user pinned authType=basic. This test guards that integration.
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', 'test@example.com');
+      config.set('token', 'scoped-token');
+      config.set('cloudId', 'abcd-1234');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.authType).toBe('basic');
+      expect(requiredConfig.cloudId).toBe('abcd-1234');
+      expect(requiredConfig.username).toBe('test@example.com');
+      expect(requiredConfig.token).toBe('scoped-token');
+    });
   });
 
   describe('mTLS authentication support', () => {
