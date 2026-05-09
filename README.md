@@ -35,6 +35,28 @@ npm install
 npm link
 ```
 
+### Claude Code Skill
+
+Install the packaged Jira skill into the current project:
+
+```bash
+jira install-skill
+```
+
+This copies the skill to `./.claude/skills/jira/SKILL.md`.
+
+If the file already exists, the command errors by default. Use `--force` to overwrite:
+
+```bash
+jira install-skill --force
+```
+
+Use a custom destination directory if needed:
+
+```bash
+jira install-skill --dest ./custom/skills/jira
+```
+
 ### Setup
 
 1. **Configure using CLI options (Bearer auth - recommended):**
