@@ -7,6 +7,7 @@ const { Command } = require('commander');
 
 // Import command modules
 const createConfigCommand = require('./commands/config');
+const createInstallSkillCommand = require('./commands/install-skill');
 const createIssueCommand = require('./commands/issue');
 const createProjectCommand = require('./commands/project');
 const createSprintCommand = require('./commands/sprint');
@@ -49,6 +50,7 @@ async function createRootCommand(factory, version) {
   // Core commands group (alphabetically ordered for better UX)
   const coreCommands = [
     createConfigCommand(factory),
+    createInstallSkillCommand(factory),
     createIssueCommand(factory),
     createProjectCommand(factory),
     createSprintCommand(factory)

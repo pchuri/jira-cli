@@ -45,6 +45,14 @@
     "url": "https://github.com/pchuri/jira-cli/issues"
   },
   "homepage": "https://github.com/pchuri/jira-cli#readme",
+  "files": [
+    "bin/",
+    "lib/",
+    "skills/",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md"
+  ],
   "publishConfig": {
     "access": "public"
   },
