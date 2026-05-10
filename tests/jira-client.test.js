@@ -540,4 +540,229 @@ describe('JiraClient', () => {
       expect(errorMessage).toContain('client certificate');
     });
   });
+
+  describe('resilience', () => {
+    describe('timeout', () => {
+      const ORIGINAL_TIMEOUT = process.env.JIRA_CLI_TIMEOUT_MS;
+
+      afterEach(() => {
+        if (ORIGINAL_TIMEOUT === undefined) {
+          delete process.env.JIRA_CLI_TIMEOUT_MS;
+        } else {
+          process.env.JIRA_CLI_TIMEOUT_MS = ORIGINAL_TIMEOUT;
+        }
+      });
+
+      test('defaults to 30000ms when env var unset', () => {
+        delete process.env.JIRA_CLI_TIMEOUT_MS;
+        const c = new JiraClient(mockConfig);
+        expect(c.clientV3.defaults.timeout).toBe(30000);
+        expect(c.clientV2.defaults.timeout).toBe(30000);
+        expect(c.agileClient.defaults.timeout).toBe(30000);
+      });
+
+      test('respects JIRA_CLI_TIMEOUT_MS env override', () => {
+        process.env.JIRA_CLI_TIMEOUT_MS = '5000';
+        const c = new JiraClient(mockConfig);
+        expect(c.clientV3.defaults.timeout).toBe(5000);
+      });
+
+      test('falls back to default for invalid env values', () => {
+        process.env.JIRA_CLI_TIMEOUT_MS = 'not-a-number';
+        const c = new JiraClient(mockConfig);
+        expect(c.clientV3.defaults.timeout).toBe(30000);
+      });
+
+      test('falls back to default for non-positive env values', () => {
+        process.env.JIRA_CLI_TIMEOUT_MS = '0';
+        const c = new JiraClient(mockConfig);
+        expect(c.clientV3.defaults.timeout).toBe(30000);
+      });
+    });
+
+    describe('shouldRetry', () => {
+      test('retries on 429', () => {
+        expect(client.shouldRetry({ response: { status: 429 } })).toBe(true);
+      });
+
+      test('retries on 5xx', () => {
+        expect(client.shouldRetry({ response: { status: 500 } })).toBe(true);
+        expect(client.shouldRetry({ response: { status: 503 } })).toBe(true);
+        expect(client.shouldRetry({ response: { status: 599 } })).toBe(true);
+      });
+
+      test('does not retry on 4xx other than 429', () => {
+        expect(client.shouldRetry({ response: { status: 400 } })).toBe(false);
+        expect(client.shouldRetry({ response: { status: 401 } })).toBe(false);
+        expect(client.shouldRetry({ response: { status: 404 } })).toBe(false);
+      });
+
+      test('retries on retryable network error codes', () => {
+        expect(client.shouldRetry({ code: 'ECONNRESET' })).toBe(true);
+        expect(client.shouldRetry({ code: 'ETIMEDOUT' })).toBe(true);
+        expect(client.shouldRetry({ code: 'ECONNABORTED' })).toBe(true);
+        expect(client.shouldRetry({ code: 'ENOTFOUND' })).toBe(true);
+        expect(client.shouldRetry({ code: 'EAI_AGAIN' })).toBe(true);
+      });
+
+      test('does not retry on unknown network error codes', () => {
+        expect(client.shouldRetry({ code: 'EWHATEVER' })).toBe(false);
+      });
+
+      test('does not retry without response or code', () => {
+        expect(client.shouldRetry({})).toBe(false);
+        expect(client.shouldRetry(null)).toBe(false);
+      });
+    });
+
+    describe('computeRetryDelay', () => {
+      test('uses exponential backoff: 1s, 2s, 4s', () => {
+        expect(client.computeRetryDelay({ response: { status: 503 } }, 1)).toBe(1000);
+        expect(client.computeRetryDelay({ response: { status: 503 } }, 2)).toBe(2000);
+        expect(client.computeRetryDelay({ response: { status: 503 } }, 3)).toBe(4000);
+      });
+
+      test('respects Retry-After header on 429 (lowercase)', () => {
+        const error = { response: { status: 429, headers: { 'retry-after': '7' } } };
+        expect(client.computeRetryDelay(error, 1)).toBe(7000);
+      });
+
+      test('respects Retry-After header on 429 (capitalized)', () => {
+        const error = { response: { status: 429, headers: { 'Retry-After': '12' } } };
+        expect(client.computeRetryDelay(error, 1)).toBe(12000);
+      });
+
+      test('falls back to exponential backoff when Retry-After missing on 429', () => {
+        const error = { response: { status: 429, headers: {} } };
+        expect(client.computeRetryDelay(error, 2)).toBe(2000);
+      });
+
+      test('ignores Retry-After on non-429 responses', () => {
+        const error = { response: { status: 503, headers: { 'retry-after': '99' } } };
+        expect(client.computeRetryDelay(error, 1)).toBe(1000);
+      });
+    });
+
+    describe('retry interceptor', () => {
+      const ORIGINAL_MAX = process.env.JIRA_CLI_MAX_RETRIES;
+      let sleepSpy;
+
+      beforeEach(() => {
+        sleepSpy = jest.spyOn(JiraClient.prototype, 'sleep').mockResolvedValue();
+      });
+
+      afterEach(() => {
+        sleepSpy.mockRestore();
+        if (ORIGINAL_MAX === undefined) {
+          delete process.env.JIRA_CLI_MAX_RETRIES;
+        } else {
+          process.env.JIRA_CLI_MAX_RETRIES = ORIGINAL_MAX;
+        }
+      });
+
+      function makeAdapterClient() {
+        const c = new JiraClient(mockConfig);
+        const adapter = jest.fn();
+        c.clientV3.defaults.adapter = adapter;
+        return { c, adapter };
+      }
+
+      function networkErrorAdapter(config, code) {
+        const err = new Error('Network error');
+        err.code = code;
+        err.config = config;
+        return Promise.reject(err);
+      }
+
+      function httpErrorAdapter(config, status, headers = {}, data = {}) {
+        const err = new Error('Request failed with status code ' + status);
+        err.config = config;
+        err.response = { status, headers, data, statusText: 'err', config };
+        err.isAxiosError = true;
+        return Promise.reject(err);
+      }
+
+      function okResponse(config) {
+        return Promise.resolve({
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config,
+          request: {},
+          data: { key: 'TEST-1' }
+        });
+      }
+
+      test('retries on 503 and eventually succeeds', async () => {
+        const { c, adapter } = makeAdapterClient();
+        adapter
+          .mockImplementationOnce(config => httpErrorAdapter(config, 503))
+          .mockImplementationOnce(config => okResponse(config));
+
+        const result = await c.getIssue('TEST-1');
+
+        expect(result).toEqual({ key: 'TEST-1' });
+        expect(adapter).toHaveBeenCalledTimes(2);
+        expect(sleepSpy).toHaveBeenCalledWith(1000);
+      });
+
+      test('retries on 429 with Retry-After delay', async () => {
+        const { c, adapter } = makeAdapterClient();
+        adapter
+          .mockImplementationOnce(config => httpErrorAdapter(config, 429, { 'retry-after': '3' }))
+          .mockImplementationOnce(config => okResponse(config));
+
+        await c.getIssue('TEST-1');
+
+        expect(sleepSpy).toHaveBeenCalledWith(3000);
+      });
+
+      test('retries on retryable network errors', async () => {
+        const { c, adapter } = makeAdapterClient();
+        adapter
+          .mockImplementationOnce(config => networkErrorAdapter(config, 'ECONNRESET'))
+          .mockImplementationOnce(config => okResponse(config));
+
+        await c.getIssue('TEST-1');
+
+        expect(adapter).toHaveBeenCalledTimes(2);
+      });
+
+      test('gives up after exhausting max retries and rejects', async () => {
+        const { c, adapter } = makeAdapterClient();
+        adapter.mockImplementation(config => httpErrorAdapter(config, 503));
+
+        await expect(c.getIssue('TEST-1')).rejects.toBeDefined();
+        expect(adapter).toHaveBeenCalledTimes(4); // initial + 3 retries
+      });
+
+      test('does not retry on 404', async () => {
+        const { c, adapter } = makeAdapterClient();
+        adapter.mockImplementation(config => httpErrorAdapter(config, 404));
+
+        await expect(c.getIssue('TEST-1')).rejects.toThrow('Resource not found');
+        expect(adapter).toHaveBeenCalledTimes(1);
+      });
+
+      test('respects JIRA_CLI_MAX_RETRIES=0 (no retries)', async () => {
+        process.env.JIRA_CLI_MAX_RETRIES = '0';
+        const { c, adapter } = makeAdapterClient();
+        adapter.mockImplementation(config => httpErrorAdapter(config, 503));
+
+        await expect(c.getIssue('TEST-1')).rejects.toBeDefined();
+        expect(adapter).toHaveBeenCalledTimes(1);
+      });
+
+      test('uses exponential backoff between retries', async () => {
+        const { c, adapter } = makeAdapterClient();
+        adapter.mockImplementation(config => httpErrorAdapter(config, 503));
+
+        await expect(c.getIssue('TEST-1')).rejects.toBeDefined();
+
+        expect(sleepSpy).toHaveBeenNthCalledWith(1, 1000);
+        expect(sleepSpy).toHaveBeenNthCalledWith(2, 2000);
+        expect(sleepSpy).toHaveBeenNthCalledWith(3, 4000);
+      });
+    });
+  });
 });
