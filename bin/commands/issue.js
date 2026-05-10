@@ -398,7 +398,7 @@ async function getIssue(client, io, issueKey, options = {}) {
       const markdown = formatIssueAsMarkdown(issue);
       io.out('\n' + markdown);
     } else {
-      displayIssueDetails(issue);
+      displayIssueDetails(issue, io);
     }
 
   } catch (err) {
