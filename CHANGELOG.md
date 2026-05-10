@@ -1,3 +1,10 @@
+# [2.8.0](https://github.com/pchuri/jira-cli/compare/v2.7.0...v2.8.0) (2026-05-10)
+
+
+### Features
+
+* **client:** add request timeout and retry with backoff ([#36](https://github.com/pchuri/jira-cli/issues/36)) ([8a99787](https://github.com/pchuri/jira-cli/commit/8a9978783edd157efa25fa0328a5949741d34cc1))
+
 # [2.7.0](https://github.com/pchuri/jira-cli/compare/v2.6.0...v2.7.0) (2026-05-10)
 
 
