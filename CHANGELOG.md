@@ -1,3 +1,15 @@
+# [2.7.0](https://github.com/pchuri/jira-cli/compare/v2.6.0...v2.7.0) (2026-05-10)
+
+
+### Bug Fixes
+
+* **deps:** bump axios, follow-redirects, fast-uri to patched versions ([#33](https://github.com/pchuri/jira-cli/issues/33)) ([066176c](https://github.com/pchuri/jira-cli/commit/066176cd1528d82944f57cc8659c2ed45ec4dab3)), closes [#32](https://github.com/pchuri/jira-cli/issues/32) [#32](https://github.com/pchuri/jira-cli/issues/32)
+
+
+### Features
+
+* add jira install-skill command ([#31](https://github.com/pchuri/jira-cli/issues/31)) ([a40cb0c](https://github.com/pchuri/jira-cli/commit/a40cb0c6237b1482a459e260cabbfa869a1c4fbd))
+
 # [2.6.0](https://github.com/pchuri/jira-cli/compare/v2.5.0...v2.6.0) (2026-04-28)
 
 
