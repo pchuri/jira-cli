@@ -257,6 +257,47 @@ describe('Utils', () => {
     });
   });
 
+  describe('displayIssueDetails', () => {
+    function createIo() {
+      const lines = [];
+      return {
+        lines,
+        println: (msg = '') => lines.push(msg)
+      };
+    }
+
+    const baseIssue = {
+      key: 'TEST-1',
+      id: '10001',
+      self: 'https://jira.example.com/rest/api/3/issue/10001',
+      fields: {
+        summary: 'Sample',
+        status: { name: 'Open' },
+        issuetype: { name: 'Bug' },
+        priority: { name: 'High' },
+        assignee: { displayName: 'John' },
+        reporter: { displayName: 'Jane' },
+        created: '2024-01-01T00:00:00.000Z',
+        updated: '2024-01-02T00:00:00.000Z'
+      }
+    };
+
+    it('should write to the provided IOStreams instead of console', () => {
+      const io = createIo();
+      Utils.displayIssueDetails(baseIssue, io);
+      const output = io.lines.join('\n');
+      expect(output).toContain('TEST-1');
+      expect(output).toContain('Sample');
+      expect(output).toContain('Open');
+      expect(output).toContain('/browse/TEST-1');
+    });
+
+    it('should throw if issue fields are missing', () => {
+      const io = createIo();
+      expect(() => Utils.displayIssueDetails({}, io)).toThrow(/issue fields missing/);
+    });
+  });
+
   describe('formatIssueAsMarkdown with ADF description', () => {
     it('should render ADF description as text instead of [object Object]', () => {
       const issue = {
