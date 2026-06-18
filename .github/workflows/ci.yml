@@ -34,7 +34,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 20.x]
+        node-version: [18.x, 20.x]
     
     steps:
     - uses: actions/checkout@v5
@@ -52,12 +52,12 @@ jobs:
       run: npm run test:coverage
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       if: matrix.node-version == '18.x'
       continue-on-error: true
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage/lcov.info
+        files: ./coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
