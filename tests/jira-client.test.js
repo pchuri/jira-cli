@@ -316,6 +316,20 @@ describe('JiraClient', () => {
       expect(result).toEqual({ id: '10001' });
     });
 
+    test('addComment falls back to v2 when v3 returns a non-JSON 200 response', async () => {
+      client.clientV3.request.mockResolvedValue({
+        headers: { 'content-type': 'text/html' },
+        data: '<html>login</html>'
+      });
+      client.clientV2.request = jest.fn().mockResolvedValue({ data: { id: '10001' } });
+
+      const result = await client.addComment('TEST-1', 'New comment');
+
+      expect(client.clientV2.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: { body: 'New comment' } });
+      expect(client.apiVersion).toBe(2);
+      expect(result).toEqual({ id: '10001' });
+    });
+
     test('addComment does not fall back on unrelated 400 errors', async () => {
       const badRequest = Object.assign(new Error('Bad request'), { status: 400, data: {} });
       client.clientV3.request.mockRejectedValue(badRequest);
