@@ -1,3 +1,11 @@
+## [2.8.1](https://github.com/pchuri/jira-cli/compare/v2.8.0...v2.8.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* **comment:** convert plain text to ADF for v3 and surface field errors ([#38](https://github.com/pchuri/jira-cli/issues/38)) ([70375dd](https://github.com/pchuri/jira-cli/commit/70375dd5dd21e3c25f90bc6095b9d64b9d93b0ed)), closes [#37](https://github.com/pchuri/jira-cli/issues/37)
+* **deps:** bump form-data override to 4.0.6 to resolve CRLF advisory ([#39](https://github.com/pchuri/jira-cli/issues/39)) ([4bf04e8](https://github.com/pchuri/jira-cli/commit/4bf04e81954d6806b942a904fce3c78ad2625bd0))
+
 # [2.8.0](https://github.com/pchuri/jira-cli/compare/v2.7.0...v2.8.0) (2026-05-10)
 
 
