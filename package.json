@@ -77,7 +77,7 @@
     "husky": "^8.0.3"
   },
   "overrides": {
-    "form-data": "4.0.4",
+    "form-data": "4.0.6",
     "tmp": "0.2.5",
     "npm": "11.6.2",
     "brace-expansion": "2.0.2",
