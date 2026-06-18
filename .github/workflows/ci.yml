@@ -34,7 +34,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [16.x, 18.x, 20.x]
+        node-version: [20.x]
     
     steps:
     - uses: actions/checkout@v5
@@ -52,12 +52,12 @@ jobs:
       run: npm run test:coverage
     
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      if: matrix.node-version == '18.x'
+      uses: codecov/codecov-action@v5
+      if: matrix.node-version == '20.x'
       continue-on-error: true
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage/lcov.info
+        files: ./coverage/lcov.info
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
@@ -68,10 +68,10 @@ jobs:
     steps:
     - uses: actions/checkout@v5
     
-    - name: Use Node.js 18.x
+    - name: Use Node.js 20.x
       uses: actions/setup-node@v5
       with:
-        node-version: 18.x
+        node-version: 20.x
         cache: 'npm'
     
     - name: Install dependencies
@@ -89,10 +89,10 @@ jobs:
       with:
         fetch-depth: 0
     
-    - name: Use Node.js 18.x
+    - name: Use Node.js 20.x
       uses: actions/setup-node@v5
       with:
-        node-version: 18.x
+        node-version: 20.x
         cache: 'npm'
     
     - name: Install dependencies
