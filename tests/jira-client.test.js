@@ -256,13 +256,19 @@ describe('JiraClient', () => {
       expect(result).toEqual(mockComments);
     });
 
-    test('addComment should make correct API call', async () => {
+    test('addComment should send ADF body on v3', async () => {
       const mockComment = { id: '10001', body: 'New comment' };
       client.clientV3.request.mockResolvedValue({ data: mockComment });
 
       const result = await client.addComment('TEST-1', 'New comment');
 
-      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: { body: 'New comment' } });
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: {
+        body: {
+          type: 'doc',
+          version: 1,
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'New comment' }] }]
+        }
+      } });
       expect(result).toEqual(mockComment);
     });
 
@@ -273,7 +279,11 @@ describe('JiraClient', () => {
       const result = await client.addComment('TEST-1', 'Internal comment', { internal: true });
 
       expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: {
-        body: 'Internal comment',
+        body: {
+          type: 'doc',
+          version: 1,
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Internal comment' }] }]
+        },
         visibility: {
           type: 'role',
           value: 'Administrators'
@@ -282,13 +292,52 @@ describe('JiraClient', () => {
       expect(result).toEqual(mockComment);
     });
 
-    test('updateComment should make correct API call', async () => {
+    test('addComment sends plain text body when pinned to v2', async () => {
+      const v2Client = new JiraClient({ ...mockConfig, apiVersion: 2 });
+      v2Client.clientV2.request = jest.fn().mockResolvedValue({ data: { id: '10001' } });
+
+      await v2Client.addComment('TEST-1', 'Plain text');
+
+      expect(v2Client.clientV2.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: { body: 'Plain text' } });
+    });
+
+    test('addComment falls back to v2 plain text when v3 rejects the body', async () => {
+      const adfRejection = Object.assign(new Error('Comment body is not valid!'), {
+        status: 400,
+        data: { errorMessages: [], errors: { comment: 'Comment body is not valid!' } }
+      });
+      client.clientV3.request.mockRejectedValue(adfRejection);
+      client.clientV2.request = jest.fn().mockResolvedValue({ data: { id: '10001' } });
+
+      const result = await client.addComment('TEST-1', 'New comment');
+
+      expect(client.clientV2.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: { body: 'New comment' } });
+      expect(client.apiVersion).toBe(2);
+      expect(result).toEqual({ id: '10001' });
+    });
+
+    test('addComment does not fall back on unrelated 400 errors', async () => {
+      const badRequest = Object.assign(new Error('Bad request'), { status: 400, data: {} });
+      client.clientV3.request.mockRejectedValue(badRequest);
+      client.clientV2.request = jest.fn();
+
+      await expect(client.addComment('TEST-1', 'New comment')).rejects.toBe(badRequest);
+      expect(client.clientV2.request).not.toHaveBeenCalled();
+    });
+
+    test('updateComment should send ADF body on v3', async () => {
       const mockComment = { id: '10000', body: 'Updated comment' };
       client.clientV3.request.mockResolvedValue({ data: mockComment });
 
       const result = await client.updateComment('10000', 'Updated comment');
 
-      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'put', url: '/comment/10000', data: { body: 'Updated comment' } });
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'put', url: '/comment/10000', data: {
+        body: {
+          type: 'doc',
+          version: 1,
+          content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Updated comment' }] }]
+        }
+      } });
       expect(result).toEqual(mockComment);
     });
 
@@ -763,6 +812,57 @@ describe('JiraClient', () => {
         expect(sleepSpy).toHaveBeenNthCalledWith(2, 2000);
         expect(sleepSpy).toHaveBeenNthCalledWith(3, 4000);
       });
+    });
+  });
+
+  describe('toADF', () => {
+    test('wraps plain text in a single paragraph', () => {
+      expect(client.toADF('hello')).toEqual({
+        type: 'doc',
+        version: 1,
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hello' }] }]
+      });
+    });
+
+    test('splits blank-line-separated blocks into paragraphs', () => {
+      const adf = client.toADF('first\n\nsecond');
+      expect(adf.content).toEqual([
+        { type: 'paragraph', content: [{ type: 'text', text: 'first' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'second' }] }
+      ]);
+    });
+
+    test('keeps single newlines as hard breaks within a paragraph', () => {
+      const adf = client.toADF('line one\nline two');
+      expect(adf.content).toEqual([
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'line one' },
+            { type: 'hardBreak' },
+            { type: 'text', text: 'line two' }
+          ]
+        }
+      ]);
+    });
+
+    test('represents empty input as an empty paragraph', () => {
+      expect(client.toADF('').content).toEqual([{ type: 'paragraph' }]);
+    });
+  });
+
+  describe('extractErrorDetail', () => {
+    test('joins errorMessages when present', () => {
+      expect(client.extractErrorDetail({ errorMessages: ['boom', 'bang'], errors: {} })).toBe('boom, bang');
+    });
+
+    test('falls back to the errors object when errorMessages is empty', () => {
+      expect(client.extractErrorDetail({ errorMessages: [], errors: { comment: 'Comment body is not valid!' } }))
+        .toBe('comment: Comment body is not valid!');
+    });
+
+    test('returns empty string when no detail is available', () => {
+      expect(client.extractErrorDetail({ errorMessages: [], errors: {} })).toBe('');
     });
   });
 });
