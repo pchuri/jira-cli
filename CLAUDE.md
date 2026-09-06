@@ -35,8 +35,17 @@ jira-cli/
 │   ├── iostreams.js          # I/O abstractions for testing
 │   ├── utils.js              # Utility functions
 │   └── analytics.js          # Usage analytics
+├── plugins/
+│   └── jira/                 # Claude Code plugin (marketplace-installable)
+│       ├── .claude-plugin/plugin.json
+│       └── skills/jira/SKILL.md  # single source of truth for the skill doc
 └── tests/                    # Jest unit tests
 ```
+
+### Claude Code Plugin
+- The `jira` skill is packaged as a Claude Code plugin under `plugins/jira/`, registered via the repo-root `.claude-plugin/marketplace.json`. Install with `/plugin marketplace add pchuri/jira-cli` + `/plugin install jira@pchuri-jira-cli`.
+- `bin/commands/install-skill.js` is the manual fallback (`jira install-skill`) — it copies `plugins/jira/skills/jira/SKILL.md` into a project's `.claude/skills/jira/`.
+- `plugins/jira/skills/jira/SKILL.md` is the single source of truth for the skill content; don't duplicate it elsewhere.
 
 ### Key Dependencies
 - **commander**: CLI framework

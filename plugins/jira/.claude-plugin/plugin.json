@@ -1,0 +1,17 @@
+{
+  "name": "jira",
+  "description": "Use jira-cli to configure Jira access and manage issues, comments, remote links, projects, and sprints from the terminal.",
+  "author": {
+    "name": "pchuri"
+  },
+  "homepage": "https://github.com/pchuri/jira-cli#readme",
+  "repository": "https://github.com/pchuri/jira-cli",
+  "license": "ISC",
+  "keywords": [
+    "jira",
+    "atlassian",
+    "cli",
+    "issue-tracking",
+    "project-management"
+  ]
+}
