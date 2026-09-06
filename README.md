@@ -233,6 +233,34 @@ export JIRA_TLS_CA_CERT="~/.certs/ca-chain.pem"  # optional
 - mTLS is commonly used in enterprise environments with private certificate authorities
 - Paths beginning with `~/` are expanded to your home directory; certificate files are read at startup, so update the cert paths if they change
 
+### Multiple Profiles
+
+If you work with more than one JIRA instance (e.g. two companies, or a Cloud and an on-prem Data Center instance), store each as a named profile instead of re-running `jira config` every time you switch:
+
+```bash
+# Create/update a profile (same flags as `jira config`)
+jira config --profile work --server https://work.atlassian.net --token your-api-token
+jira profile add personal --server https://personal.atlassian.net --token your-api-token
+
+# List profiles (the active one is marked)
+jira profile list
+
+# Switch the active profile
+jira profile use work
+
+# Remove a profile (refuses to remove the last remaining one)
+jira profile remove personal
+```
+
+Any command accepts a one-off `--profile <name>` override without switching the active profile, either as a global flag or on `jira config`:
+
+```bash
+jira --profile personal issue list
+jira config --profile personal --show
+```
+
+Profile resolution order: an explicit `--profile <name>` flag > the `JIRA_PROFILE` environment variable > the stored active profile > `default`. Connection-detail environment variables (`JIRA_HOST`, `JIRA_API_TOKEN`, etc.) still take precedence over any profile, exactly as without profiles.
+
 ### Getting Your API Token
 
 1. Go to [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens)
@@ -430,9 +458,13 @@ jira sprint list --board 123 --state active
 
 | Command | Description | Options |
 |---------|-------------|---------|
-| `config --server <url> --token <token>` | Configure CLI (Bearer auth) | Username optional; use `--username <email>` for Basic auth |
-| `config --show` | Show current configuration | - |
+| `config --server <url> --token <token>` | Configure CLI (Bearer auth) | Username optional; use `--username <email>` for Basic auth; `--profile <name>` to target a specific profile |
+| `config --show` | Show current configuration | `--profile <name>` |
 | `config set <key> <value>` | Set individual config value | - |
+| `profile list` | List all configuration profiles | - |
+| `profile use <name>` | Switch the active profile | - |
+| `profile add <name>` | Create/update a profile (non-interactive) | Same flags as `config` |
+| `profile remove <name>` | Remove a profile | Refuses to remove the last remaining one |
 | `issue view <key>` | View issue details (alias: show) | `--format <terminal\|markdown>`, `--output <path>` |
 | `issue list` | List issues | `--project <key>`, `--assignee <user>`, `--reporter <user>`, `--status <status>`, `--type <type>`, `--priority <level>`, `--created <date>`, `--updated <date>`, `--jql <query>`, `--limit <number>` |
 | `issue create` | Create new issue | **Required:** `--project <key>`, `--type <type>`, `--summary <text>`<br>**Optional:** `--description <text>`, `--description-file <path>`, `--assignee <user>`, `--priority <level>` |
@@ -456,11 +488,18 @@ jira sprint list --board 123 --state active
 
 ## Configuration File
 
-Configuration is stored using the `conf` package in your system's config directory:
+Configuration is stored as JSON at `~/.jira-cli/config.json` (same path on macOS, Linux, and Windows), holding one or more named profiles:
 
-- **macOS**: `~/Library/Preferences/jira-cli/config.json`
-- **Linux**: `~/.config/jira-cli/config.json`
-- **Windows**: `%APPDATA%\jira-cli\config.json`
+```json
+{
+  "activeProfile": "default",
+  "profiles": {
+    "default": { "server": "...", "token": "...", "authType": "bearer" }
+  }
+}
+```
+
+If you're upgrading from an older version, your existing single config (previously stored via the `conf` package, e.g. at `~/Library/Preferences/jira-cli-nodejs/config.json` on macOS) is transparently migrated into the `"default"` profile the first time you run any `jira` command — no action needed. The old file is left in place, untouched.
 
 ## Examples
 

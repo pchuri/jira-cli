@@ -25,12 +25,14 @@ jira-cli/
 │   ├── root.js               # Root command setup
 │   └── commands/             # Command implementations
 │       ├── config.js         # Configuration management
+│       ├── profile.js        # Multi-profile management (list/use/add/remove)
 │       ├── issue.js          # Issue CRUD operations
 │       ├── project.js        # Project operations
 │       └── sprint.js         # Sprint management
 ├── lib/
 │   ├── jira-client.js        # JIRA API client (axios)
-│   ├── config.js             # Config management (conf package)
+│   ├── config.js             # Config management (hand-rolled JSON store, multi-profile)
+│   ├── config-options.js     # Shared flag-application logic (config --profile / profile add)
 │   ├── factory.js            # Command factory
 │   ├── iostreams.js          # I/O abstractions for testing
 │   ├── utils.js              # Utility functions
@@ -44,7 +46,6 @@ jira-cli/
 - **chalk**: Terminal colors
 - **ora**: Spinners and progress indicators
 - **cli-table3**: Formatted table output
-- **conf**: Cross-platform config storage
 
 ## Development Guidelines
 
@@ -68,11 +69,13 @@ jira-cli/
 - Use iostreams for output (supports testing and mocking)
 
 ### Configuration
-- Config stored via `conf` package (platform-specific locations)
+- Config stored as hand-rolled JSON at `~/.jira-cli/config.json` (`{ activeProfile, profiles: { <name>: {...} } }`), supporting multiple named profiles
+- A pre-multi-profile single config (previously managed by the `conf` package) is transparently migrated into the `"default"` profile on first read; the old file is left untouched
 - Support environment variables and CLI flags (no interactive setup)
-- Environment variables: `JIRA_HOST`, `JIRA_API_TOKEN`, `JIRA_USERNAME`
+- Environment variables: `JIRA_HOST`, `JIRA_API_TOKEN`, `JIRA_USERNAME`, `JIRA_PROFILE`
 - Legacy support: `JIRA_DOMAIN`, `JIRA_USERNAME`, `JIRA_API_TOKEN`
 - CLI flags: `jira config --server <url> --username <email> --token <token>`
+- Multiple profiles: `jira config --profile <name> --server <url> --token <token>`, `jira profile list|use <name>|add <name>|remove <name>`, global `--profile <name>` flag
 
 ### Issue Management Patterns
 - **Create**: Require `--project`, `--type`, `--summary` flags

@@ -131,7 +131,7 @@ describe('ConfigCommand', () => {
         '--cookie', 'MRHSession=abc123'
       ]);
 
-      expect(mockConfig.set).toHaveBeenCalledWith('cookie', 'MRHSession=abc123');
+      expect(mockConfig.set).toHaveBeenCalledWith('cookie', 'MRHSession=abc123', undefined);
     });
 
     it('should test connection when cookie is set alongside a complete config', async () => {
@@ -157,7 +157,7 @@ describe('ConfigCommand', () => {
         '--api-version', '2'
       ]);
 
-      expect(mockConfig.set).toHaveBeenCalledWith('apiVersion', '2');
+      expect(mockConfig.set).toHaveBeenCalledWith('apiVersion', '2', undefined);
     });
 
     it('should reject invalid --api-version values', async () => {
@@ -185,9 +185,9 @@ describe('ConfigCommand', () => {
         '--token', 'testtoken'
       ]);
 
-      expect(mockConfig.set).toHaveBeenCalledWith('server', 'https://test.atlassian.net');
-      expect(mockConfig.set).toHaveBeenCalledWith('token', 'testtoken');
-      expect(mockConfig.set).not.toHaveBeenCalledWith('username', expect.anything());
+      expect(mockConfig.set).toHaveBeenCalledWith('server', 'https://test.atlassian.net', undefined);
+      expect(mockConfig.set).toHaveBeenCalledWith('token', 'testtoken', undefined);
+      expect(mockConfig.set).not.toHaveBeenCalledWith('username', expect.anything(), expect.anything());
     });
 
     it('should test connection with Bearer auth config', async () => {
@@ -217,7 +217,7 @@ describe('ConfigCommand', () => {
         '--cloud-id', 'abcd-1234'
       ]);
 
-      expect(mockConfig.set).toHaveBeenCalledWith('cloudId', 'abcd-1234');
+      expect(mockConfig.set).toHaveBeenCalledWith('cloudId', 'abcd-1234', undefined);
     });
 
     it('should accept --cloud-id alone without other flags', async () => {
@@ -227,7 +227,7 @@ describe('ConfigCommand', () => {
         '--cloud-id', 'abcd-1234'
       ]);
 
-      expect(mockConfig.set).toHaveBeenCalledWith('cloudId', 'abcd-1234');
+      expect(mockConfig.set).toHaveBeenCalledWith('cloudId', 'abcd-1234', undefined);
     });
   });
 
@@ -265,10 +265,10 @@ describe('ConfigCommand', () => {
         '--tls-ca-cert', caPath
       ]);
 
-      expect(mockConfig.set).toHaveBeenCalledWith('authType', 'mtls');
-      expect(mockConfig.set).toHaveBeenCalledWith('tlsClientCert', certPath);
-      expect(mockConfig.set).toHaveBeenCalledWith('tlsClientKey', keyPath);
-      expect(mockConfig.set).toHaveBeenCalledWith('tlsCaCert', caPath);
+      expect(mockConfig.set).toHaveBeenCalledWith('authType', 'mtls', undefined);
+      expect(mockConfig.set).toHaveBeenCalledWith('tlsClientCert', certPath, undefined);
+      expect(mockConfig.set).toHaveBeenCalledWith('tlsClientKey', keyPath, undefined);
+      expect(mockConfig.set).toHaveBeenCalledWith('tlsCaCert', caPath, undefined);
     });
 
     it('should reject invalid --auth-type values', async () => {
@@ -282,7 +282,7 @@ describe('ConfigCommand', () => {
         expect.stringContaining('--auth-type must be')
       );
       expect(exitSpy).toHaveBeenCalledWith(1);
-      expect(mockConfig.set).not.toHaveBeenCalledWith('authType', expect.anything());
+      expect(mockConfig.set).not.toHaveBeenCalledWith('authType', expect.anything(), expect.anything());
     });
 
     it('should error when --tls-client-cert points to a missing file', async () => {
@@ -296,7 +296,7 @@ describe('ConfigCommand', () => {
         expect.stringContaining('Client certificate file not found')
       );
       expect(exitSpy).toHaveBeenCalledWith(1);
-      expect(mockConfig.set).not.toHaveBeenCalledWith('tlsClientCert', expect.anything());
+      expect(mockConfig.set).not.toHaveBeenCalledWith('tlsClientCert', expect.anything(), expect.anything());
     });
 
     it('should error when --tls-client-key points to a missing file', async () => {
@@ -310,6 +310,71 @@ describe('ConfigCommand', () => {
         expect.stringContaining('Client key file not found')
       );
       expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('profile selection', () => {
+    // Profile selection is deliberately NOT a local option on `config` (or
+    // its get/set/unset subcommands) - it comes exclusively from the root
+    // program's global --profile flag (see bin/root.js), resolved via the
+    // JIRA_PROFILE env var it sets in preAction. Commander does not merge a
+    // child's local option with an identically-named option on an ancestor
+    // (whichever level declares it closest to the root silently wins,
+    // emptying every other level's own .opts() for that key), so
+    // redeclaring --profile here would silently break it. These tests lock
+    // in that design decision.
+    it('should not declare its own --profile option on the main command', () => {
+      const opt = configCommand.options.find(o => o.long === '--profile');
+      expect(opt).toBeUndefined();
+    });
+
+    it('should not declare its own --profile option on the get/set/unset subcommands', () => {
+      ['get', 'set', 'unset'].forEach(name => {
+        const sub = configCommand.commands.find(c => c.name() === name);
+        expect(sub.options.find(o => o.long === '--profile')).toBeUndefined();
+      });
+    });
+
+    it('should call config methods with no explicit profile argument, deferring to Config\'s own env-var resolution', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--server', 'https://work.atlassian.net',
+        '--token', 'work-token'
+      ]);
+
+      // These go through applyConfigOptions(), which always passes a
+      // (possibly undefined) trailing profileName positionally.
+      expect(mockConfig.set).toHaveBeenCalledWith('server', 'https://work.atlassian.net', undefined);
+      expect(mockConfig.set).toHaveBeenCalledWith('token', 'work-token', undefined);
+    });
+
+    it('should call displayConfig with no arguments on --show', async () => {
+      await configCommand.parseAsync(['node', 'test', '--show']);
+
+      expect(mockConfig.displayConfig).toHaveBeenCalledWith();
+    });
+
+    it('should call get/set/delete with no explicit profile argument on the get/set/unset subcommands', async () => {
+      mockConfig.get.mockReturnValue('https://work.atlassian.net');
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test', 'get', 'server']);
+      expect(mockConfig.get).toHaveBeenCalledWith('server');
+
+      await configCommand.parseAsync(['node', 'test', 'set', 'server', 'https://work.atlassian.net']);
+      expect(mockConfig.set).toHaveBeenCalledWith('server', 'https://work.atlassian.net');
+
+      await configCommand.parseAsync(['node', 'test', 'unset', 'server']);
+      expect(mockConfig.delete).toHaveBeenCalledWith('server');
+    });
+
+    it('should mask the cookie value like the token in the get subcommand', async () => {
+      mockConfig.get.mockReturnValue('MRHSession=abc123');
+
+      await configCommand.parseAsync(['node', 'test', 'get', 'cookie']);
+
+      expect(mockIOStreams.out).toHaveBeenCalledWith('cookie: ***');
     });
   });
 });

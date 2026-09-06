@@ -34,6 +34,8 @@ jira --version
 | `JIRA_TLS_CLIENT_KEY` | mTLS client key path | `~/.certs/client.key` |
 | `JIRA_TLS_CA_CERT` | Optional CA certificate path | `~/.certs/ca.pem` |
 | `JIRA_API_VERSION` | API version behavior: `auto`, `2`, or `3` | `auto` |
+| `JIRA_COOKIE` | Raw session cookie sent alongside auth (for SSO-gated on-prem instances) | `MRHSession=...` |
+| `JIRA_PROFILE` | Selects which configuration profile to use | `work` |
 
 ### CLI configuration
 
@@ -72,12 +74,13 @@ jira config --show
 These apply at the root level:
 
 ```sh
-jira [--config <path>] [--verbose] [--no-color] <command>
+jira [--config <path>] [--profile <name>] [--verbose] [--no-color] <command>
 ```
 
 | Option | Description |
 |---|---|
 | `--config <path>` | Use a specific config file path |
+| `--profile <name>` | Use a specific configuration profile (see `profile` and `config --profile` below) |
 | `--verbose` | Enable verbose output |
 | `--no-color` | Disable ANSI color output |
 
@@ -97,7 +100,7 @@ jira [--config <path>] [--verbose] [--no-color] <command>
 Show or set configuration values.
 
 ```sh
-jira config [--show] [--server <url>] [--username <username>] [--token <token>] [--cloud-id <cloudId>] [--auth-type <type>] [--tls-client-cert <path>] [--tls-client-key <path>] [--tls-ca-cert <path>]
+jira config [--show] [--profile <name>] [--server <url>] [--username <username>] [--token <token>] [--cloud-id <cloudId>] [--auth-type <type>] [--tls-client-cert <path>] [--tls-client-key <path>] [--tls-ca-cert <path>] [--api-version <version>] [--cookie <value>]
 ```
 
 Important options:
@@ -105,6 +108,7 @@ Important options:
 | Option | Description |
 |---|---|
 | `--show` | Display current configuration |
+| `--profile <name>` | Operate on a specific configuration profile (creates it if it does not exist) - see `profile` below |
 | `--server <url>` | Jira base URL |
 | `--username <username>` | Username/email for Basic auth |
 | `--token <token>` | API token |
@@ -113,10 +117,13 @@ Important options:
 | `--tls-client-cert <path>` | mTLS client certificate |
 | `--tls-client-key <path>` | mTLS client key |
 | `--tls-ca-cert <path>` | Optional mTLS CA certificate |
+| `--api-version <version>` | `auto` (default), `2`, or `3` |
+| `--cookie <value>` | Raw session cookie sent alongside auth (for SSO-gated on-prem instances) |
 
 ```sh
 jira config --show
 jira config --server https://your-site.atlassian.net --token <token>
+jira config --profile work --server https://work.atlassian.net --token <token>
 ```
 
 ### `config get [key]`
@@ -156,6 +163,29 @@ jira config unset <key>
 
 ```sh
 jira config unset cloudId
+```
+
+### `profile`
+
+Manage multiple named configuration profiles (e.g. more than one Jira instance).
+
+```sh
+jira profile list
+jira profile use <name>
+jira profile add <name> [--server <url>] [--token <token>] [...same flags as config]
+jira profile remove <name>
+```
+
+- `profile list` marks the active profile.
+- `profile use <name>` switches which profile is active by default.
+- `profile add <name>` accepts the exact same flags as `config` (`--server`, `--username`, `--token`, `--cloud-id`, `--auth-type`, `--tls-client-cert`, `--tls-client-key`, `--tls-ca-cert`, `--api-version`, `--cookie`) and is equivalent to `jira config --profile <name> ...`.
+- `profile remove <name>` refuses to remove the only remaining profile.
+- Profile resolution order: explicit `--profile <name>` flag > `JIRA_PROFILE` env var > stored active profile > `default`.
+
+```sh
+jira profile add personal --server https://personal.atlassian.net --token <token>
+jira profile use personal
+jira --profile work issue list   # one-off override, doesn't change the active profile
 ```
 
 ### `issue list`

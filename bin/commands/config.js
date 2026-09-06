@@ -1,7 +1,17 @@
 const { Command } = require('commander');
-const fs = require('fs');
-const { expandHomePath } = require('../../lib/utils');
+const { applyConfigOptions, hasAnyConfigOption } = require('../../lib/config-options');
 
+// Profile selection for this command comes exclusively from the root
+// program's global `--profile <name>` option (see bin/root.js), which is
+// turned into the JIRA_PROFILE env var in its preAction hook and read
+// lazily by Config methods. A command-local `--profile` option is
+// deliberately NOT declared here: Commander does not merge a child's local
+// option with an identically-named option on an ancestor - whichever level
+// declares it closest to the root wins, silently emptying every other
+// level's own `.opts()` for that key. Declaring it only once, on the root
+// program, avoids that trap while still parsing correctly no matter where
+// `--profile` appears on the command line (`jira --profile x config ...`,
+// `jira config --profile x ...`, `jira config get key --profile x`, ...).
 function createConfigCommand(factory) {
   const command = new Command('config')
     .description('Manage JIRA CLI configuration')
@@ -26,104 +36,12 @@ function createConfigCommand(factory) {
         await analytics.track('config', { action: getConfigAction(options) });
 
         if (options.show) {
-          // Show current configuration
           config.displayConfig();
           return;
         }
 
-        if (
-          options.server ||
-          options.username ||
-          options.token ||
-          options.cloudId ||
-          options.authType ||
-          options.tlsClientCert ||
-          options.tlsClientKey ||
-          options.tlsCaCert ||
-          options.apiVersion ||
-          options.cookie
-        ) {
-          // Set individual configuration values
-          if (options.server) {
-            config.set('server', options.server.replace(/\/$/, ''));
-            io.success(`Server set to: ${options.server}`);
-          }
-
-          if (options.username) {
-            config.set('username', options.username);
-            io.success(`Username set to: ${options.username}`);
-          }
-
-          if (options.token) {
-            config.set('token', options.token);
-            io.success('API token updated');
-          }
-
-          if (options.cloudId) {
-            config.set('cloudId', options.cloudId);
-            io.success(`Cloud ID set to: ${options.cloudId} (requests will route via Atlassian Platform API Gateway)`);
-          }
-
-          if (options.authType) {
-            const authType = options.authType.toLowerCase();
-            if (!['basic', 'bearer', 'mtls'].includes(authType)) {
-              throw new Error('--auth-type must be "basic", "bearer", or "mtls"');
-            }
-            config.set('authType', authType);
-            io.success(`Auth type set to: ${authType}`);
-          }
-
-          // mTLS certificate configuration
-          if (options.tlsClientCert) {
-            if (!fs.existsSync(expandHomePath(options.tlsClientCert))) {
-              throw new Error(`Client certificate file not found: ${options.tlsClientCert}`);
-            }
-            config.set('tlsClientCert', options.tlsClientCert);
-            io.success('TLS client certificate configured');
-          }
-
-          if (options.tlsClientKey) {
-            if (!fs.existsSync(expandHomePath(options.tlsClientKey))) {
-              throw new Error(`Client key file not found: ${options.tlsClientKey}`);
-            }
-            config.set('tlsClientKey', options.tlsClientKey);
-            io.success('TLS client key configured');
-          }
-
-          if (options.tlsCaCert) {
-            if (!fs.existsSync(expandHomePath(options.tlsCaCert))) {
-              throw new Error(`CA certificate file not found: ${options.tlsCaCert}`);
-            }
-            config.set('tlsCaCert', options.tlsCaCert);
-            io.success('TLS CA certificate configured');
-          }
-
-          if (options.apiVersion) {
-            const apiVersion = options.apiVersion.toLowerCase();
-            if (!['auto', '2', '3'].includes(apiVersion)) {
-              throw new Error('--api-version must be "auto", "2", or "3"');
-            }
-            config.set('apiVersion', apiVersion);
-            io.success(`API version set to: ${apiVersion}`);
-          }
-
-          if (options.cookie) {
-            config.set('cookie', options.cookie);
-            io.success('Session cookie configured');
-          }
-
-          // Test connection if all required fields are present
-          if (config.isConfigured()) {
-            io.info('Testing connection...');
-            const testResult = await config.testConfig();
-
-            if (testResult.success) {
-              io.success('Connection successful!');
-              io.out(`Welcome, ${testResult.user.displayName}!`);
-            } else {
-              io.error(`Connection failed: ${testResult.error}`);
-            }
-          }
+        if (hasAnyConfigOption(options)) {
+          await applyConfigOptions(config, io, options);
         } else {
           // No options provided - show usage
           throw new Error(
@@ -139,6 +57,11 @@ function createConfigCommand(factory) {
             '    --tls-client-cert /path/to/client.pem \\\n' +
             '    --tls-client-key /path/to/client.key \\\n' +
             '    --tls-ca-cert /path/to/ca.pem\n\n' +
+            'Multiple profiles (e.g. more than one JIRA instance):\n' +
+            '  jira config --profile <name> --server <url> --token <token>\n' +
+            '  jira profile add <name> --server <url> --token <token>\n' +
+            '  jira profile list\n' +
+            '  jira profile use <name>\n\n' +
             'Or set using individual commands:\n' +
             '  jira config set server <url>\n' +
             '  jira config set token <token>\n' +
@@ -171,7 +94,7 @@ function createConfigCommand(factory) {
         if (key) {
           const value = config.get(key);
           if (value !== undefined) {
-            io.out(`${key}: ${key === 'token' ? '***' : value}`);
+            io.out(`${key}: ${key === 'token' || key === 'cookie' ? '***' : value}`);
           } else {
             io.warn(`Configuration key '${key}' not found`);
           }
@@ -233,20 +156,7 @@ function createConfigCommand(factory) {
 
 function getConfigAction(options) {
   if (options.show) return 'show';
-  if (
-    options.server ||
-    options.username ||
-    options.token ||
-    options.cloudId ||
-    options.authType ||
-    options.tlsClientCert ||
-    options.tlsClientKey ||
-    options.tlsCaCert ||
-    options.apiVersion ||
-    options.cookie
-  ) {
-    return 'set';
-  }
+  if (hasAnyConfigOption(options)) return 'set';
   return 'interactive';
 }
 
