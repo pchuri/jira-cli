@@ -15,6 +15,8 @@ function createConfigCommand(factory) {
     .option('--tls-client-cert <path>', 'client certificate for mTLS authentication')
     .option('--tls-client-key <path>', 'client private key for mTLS authentication')
     .option('--tls-ca-cert <path>', 'CA certificate for mTLS authentication (optional)')
+    .option('--api-version <version>', 'JIRA REST API version to use (auto, 2, or 3)')
+    .option('--cookie <cookie>', 'raw session cookie sent alongside auth (for SSO-gated on-prem instances)')
     .action(async (options) => {
       const io = factory.getIOStreams();
       const config = factory.getConfig();
@@ -37,7 +39,9 @@ function createConfigCommand(factory) {
           options.authType ||
           options.tlsClientCert ||
           options.tlsClientKey ||
-          options.tlsCaCert
+          options.tlsCaCert ||
+          options.apiVersion ||
+          options.cookie
         ) {
           // Set individual configuration values
           if (options.server) {
@@ -92,6 +96,20 @@ function createConfigCommand(factory) {
             }
             config.set('tlsCaCert', options.tlsCaCert);
             io.success('TLS CA certificate configured');
+          }
+
+          if (options.apiVersion) {
+            const apiVersion = options.apiVersion.toLowerCase();
+            if (!['auto', '2', '3'].includes(apiVersion)) {
+              throw new Error('--api-version must be "auto", "2", or "3"');
+            }
+            config.set('apiVersion', apiVersion);
+            io.success(`API version set to: ${apiVersion}`);
+          }
+
+          if (options.cookie) {
+            config.set('cookie', options.cookie);
+            io.success('Session cookie configured');
           }
 
           // Test connection if all required fields are present
@@ -223,7 +241,9 @@ function getConfigAction(options) {
     options.authType ||
     options.tlsClientCert ||
     options.tlsClientKey ||
-    options.tlsCaCert
+    options.tlsCaCert ||
+    options.apiVersion ||
+    options.cookie
   ) {
     return 'set';
   }
