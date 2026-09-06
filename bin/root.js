@@ -9,6 +9,7 @@ const { Command } = require('commander');
 const createConfigCommand = require('./commands/config');
 const createInstallSkillCommand = require('./commands/install-skill');
 const createIssueCommand = require('./commands/issue');
+const createProfileCommand = require('./commands/profile');
 const createProjectCommand = require('./commands/project');
 const createSprintCommand = require('./commands/sprint');
 
@@ -44,6 +45,7 @@ async function createRootCommand(factory, version) {
   // Add global options
   program
     .option('--config <path>', 'config file path')
+    .option('--profile <name>', 'use a specific configuration profile')
     .option('--verbose', 'verbose output')
     .option('--no-color', 'disable color output');
 
@@ -52,6 +54,7 @@ async function createRootCommand(factory, version) {
     createConfigCommand(factory),
     createInstallSkillCommand(factory),
     createIssueCommand(factory),
+    createProfileCommand(factory),
     createProjectCommand(factory),
     createSprintCommand(factory)
   ];
@@ -94,6 +97,13 @@ async function createRootCommand(factory, version) {
     // Handle global --config flag
     if (program.opts().config) {
       process.env.JIRA_CLI_CONFIG_PATH = program.opts().config;
+    }
+
+    // Handle global --profile flag - read lazily by Config methods via
+    // process.env.JIRA_PROFILE, which always run inside a command's
+    // .action(), i.e. strictly after this hook has already fired.
+    if (program.opts().profile) {
+      process.env.JIRA_PROFILE = program.opts().profile;
     }
   });
 
