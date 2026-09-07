@@ -671,6 +671,47 @@ describe('Config', () => {
     });
   });
 
+  describe('cookie-only authentication support', () => {
+    it('should report as not configured when authType is cookie but cookie is missing', () => {
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'cookie');
+
+      expect(config.isConfigured()).toBe(false);
+    });
+
+    it('should report as configured when authType is cookie and cookie is set, with no token at all', () => {
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'cookie');
+      config.set('cookie', 'MRHSession=abc123');
+
+      expect(config.isConfigured()).toBe(true);
+    });
+
+    it('should throw a clear error from getRequiredConfig when authType is cookie but cookie is missing', () => {
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'cookie');
+
+      expect(() => config.getRequiredConfig()).toThrow(/Cookie auth/);
+      expect(() => config.getRequiredConfig()).toThrow(/Missing: cookie/);
+    });
+
+    it('should return a cookie-only config from getRequiredConfig with no token/username fields', () => {
+      config.set('server', 'https://jira.example.com');
+      config.set('authType', 'cookie');
+      config.set('cookie', 'MRHSession=abc123');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.authType).toBe('cookie');
+      expect(requiredConfig.cookie).toBe('MRHSession=abc123');
+      expect(requiredConfig.token).toBeUndefined();
+      expect(requiredConfig.username).toBeUndefined();
+    });
+
+    it('should reject an invalid authType including a would-be typo of cookie', () => {
+      expect(() => config.set('authType', 'cookies')).toThrow(/Invalid authType/);
+    });
+  });
+
   describe('explicit basic auth validation', () => {
     it('should report as not configured when authType is basic but username is missing', () => {
       config.set('server', 'https://test.atlassian.net');

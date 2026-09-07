@@ -21,7 +21,7 @@ function createConfigCommand(factory) {
     .option('--username <username>', 'set username')
     .option('--token <token>', 'set API token')
     .option('--cloud-id <cloudId>', 'set Atlassian Cloud ID for scoped API tokens')
-    .option('--auth-type <type>', 'authentication type (basic, bearer, or mtls)')
+    .option('--auth-type <type>', 'authentication type (basic, bearer, mtls, or cookie)')
     .option('--tls-client-cert <path>', 'client certificate for mTLS authentication')
     .option('--tls-client-key <path>', 'client private key for mTLS authentication')
     .option('--tls-ca-cert <path>', 'CA certificate for mTLS authentication (optional)')
