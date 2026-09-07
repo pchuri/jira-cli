@@ -106,6 +106,20 @@ describe('JiraClient', () => {
       expect(client.clientV2.defaults.headers['Cookie']).toBeUndefined();
     });
 
+    test('should send only a Cookie header (no Authorization) for cookie-only auth', () => {
+      const cookieOnlyConfig = {
+        server: 'https://test.atlassian.net',
+        authType: 'cookie',
+        cookie: 'MRHSession=abc123'
+      };
+
+      const client = new JiraClient(cookieOnlyConfig);
+
+      expect(client.clientV2.defaults.headers['Authorization']).toBeUndefined();
+      expect(client.clientV2.defaults.headers['Cookie']).toBe('MRHSession=abc123');
+      expect(client.clientV2.defaults.auth).toBeNull();
+    });
+
     test('should create client with Basic auth when username is provided', () => {
       const basicConfig = {
         server: 'https://test.atlassian.net',

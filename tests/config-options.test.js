@@ -54,6 +54,11 @@ describe('config-options', () => {
       expect(config.set).not.toHaveBeenCalledWith('authType', expect.anything(), expect.anything());
     });
 
+    it('should accept --auth-type cookie', async () => {
+      await applyConfigOptions(config, io, { authType: 'cookie' });
+      expect(config.set).toHaveBeenCalledWith('authType', 'cookie', undefined);
+    });
+
     it('should reject an invalid --api-version', async () => {
       await expect(applyConfigOptions(config, io, { apiVersion: 'invalid' })).rejects.toThrow('--api-version must be');
     });
