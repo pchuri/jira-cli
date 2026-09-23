@@ -64,6 +64,48 @@ describe('JiraClient', () => {
       expect(bearerClient.clientV3.defaults.headers['Authorization']).toBe('Bearer test-token');
     });
 
+    test('should attach a Cookie header alongside Bearer auth when configured', () => {
+      const cookieConfig = {
+        server: 'https://test.atlassian.net',
+        token: 'test-token',
+        cookie: 'MRHSession=abc123'
+      };
+
+      const cookieClient = new JiraClient(cookieConfig);
+
+      expect(cookieClient.clientV2.defaults.headers['Authorization']).toBe('Bearer test-token');
+      expect(cookieClient.clientV2.defaults.headers['Cookie']).toBe('MRHSession=abc123');
+      expect(cookieClient.clientV3.defaults.headers['Cookie']).toBe('MRHSession=abc123');
+    });
+
+    test('should attach a Cookie header alongside Basic auth when configured', () => {
+      const cookieConfig = {
+        server: 'https://test.atlassian.net',
+        username: 'test@example.com',
+        token: 'test-token',
+        cookie: 'MRHSession=abc123'
+      };
+
+      const cookieClient = new JiraClient(cookieConfig);
+
+      expect(cookieClient.clientV2.defaults.auth).toEqual({
+        username: cookieConfig.username,
+        password: cookieConfig.token
+      });
+      expect(cookieClient.clientV2.defaults.headers['Cookie']).toBe('MRHSession=abc123');
+    });
+
+    test('should not set a Cookie header when none is configured', () => {
+      const noCookieConfig = {
+        server: 'https://test.atlassian.net',
+        token: 'test-token'
+      };
+
+      const client = new JiraClient(noCookieConfig);
+
+      expect(client.clientV2.defaults.headers['Cookie']).toBeUndefined();
+    });
+
     test('should create client with Basic auth when username is provided', () => {
       const basicConfig = {
         server: 'https://test.atlassian.net',

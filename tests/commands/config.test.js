@@ -111,6 +111,69 @@ describe('ConfigCommand', () => {
       const opt = configCommand.options.find(o => o.long === '--tls-ca-cert');
       expect(opt).toBeDefined();
     });
+
+    it('should have api-version option', () => {
+      const opt = configCommand.options.find(o => o.long === '--api-version');
+      expect(opt).toBeDefined();
+    });
+
+    it('should have cookie option', () => {
+      const opt = configCommand.options.find(o => o.long === '--cookie');
+      expect(opt).toBeDefined();
+    });
+  });
+
+  describe('--cookie support', () => {
+    it('should set cookie when provided', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--cookie', 'MRHSession=abc123'
+      ]);
+
+      expect(mockConfig.set).toHaveBeenCalledWith('cookie', 'MRHSession=abc123');
+    });
+
+    it('should test connection when cookie is set alongside a complete config', async () => {
+      mockConfig.isConfigured.mockReturnValue(true);
+      mockConfig.testConfig.mockResolvedValue({
+        success: true,
+        user: { displayName: 'Test User' }
+      });
+
+      await configCommand.parseAsync(['node', 'test',
+        '--cookie', 'MRHSession=abc123'
+      ]);
+
+      expect(mockConfig.testConfig).toHaveBeenCalled();
+    });
+  });
+
+  describe('--api-version support', () => {
+    it('should set apiVersion when a valid value is provided', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+
+      await configCommand.parseAsync(['node', 'test',
+        '--api-version', '2'
+      ]);
+
+      expect(mockConfig.set).toHaveBeenCalledWith('apiVersion', '2');
+    });
+
+    it('should reject invalid --api-version values', async () => {
+      mockConfig.isConfigured.mockReturnValue(false);
+      const exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+
+      await configCommand.parseAsync(['node', 'test',
+        '--api-version', 'invalid'
+      ]);
+
+      expect(mockIOStreams.error).toHaveBeenCalledWith(
+        expect.stringContaining('--api-version must be')
+      );
+
+      exitSpy.mockRestore();
+    });
   });
 
   describe('Bearer authentication support', () => {

@@ -15,6 +15,7 @@ describe('Config', () => {
     delete process.env.JIRA_USERNAME;
     delete process.env.JIRA_API_TOKEN;
     delete process.env.JIRA_CLOUD_ID;
+    delete process.env.JIRA_COOKIE;
     delete process.env.JIRA_AUTH_TYPE;
     delete process.env.JIRA_TLS_CLIENT_CERT;
     delete process.env.JIRA_TLS_CLIENT_KEY;
@@ -281,6 +282,76 @@ describe('Config', () => {
       expect(requiredConfig.cloudId).toBe('abcd-1234');
       expect(requiredConfig.username).toBe('test@example.com');
       expect(requiredConfig.token).toBe('scoped-token');
+    });
+  });
+
+  describe('SSO gateway session cookie support', () => {
+    it('should default cookie to empty string when not set', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', 'testtoken');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.cookie).toBe('');
+    });
+
+    it('should return cookie from stored config (bearer/legacy branch)', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', 'testtoken');
+      config.set('cookie', 'MRHSession=abc123');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.cookie).toBe('MRHSession=abc123');
+    });
+
+    it('should include cookie in the explicit basic-auth getRequiredConfig output', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('authType', 'basic');
+      config.set('username', 'test@example.com');
+      config.set('token', 'testtoken');
+      config.set('cookie', 'MRHSession=abc123');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.authType).toBe('basic');
+      expect(requiredConfig.cookie).toBe('MRHSession=abc123');
+    });
+
+    it('should include cookie in the mTLS getRequiredConfig output', () => {
+      const certPath = fs.mkdtempSync(path.join(os.tmpdir(), 'jira-cookie-mtls-'));
+      const clientCert = path.join(certPath, 'client.pem');
+      const clientKey = path.join(certPath, 'client.key');
+      fs.writeFileSync(clientCert, 'cert');
+      fs.writeFileSync(clientKey, 'key');
+
+      config.set('server', 'https://test.example.com');
+      config.set('authType', 'mtls');
+      config.set('tlsClientCert', clientCert);
+      config.set('tlsClientKey', clientKey);
+      config.set('cookie', 'MRHSession=abc123');
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.authType).toBe('mtls');
+      expect(requiredConfig.cookie).toBe('MRHSession=abc123');
+
+      fs.rmSync(certPath, { recursive: true, force: true });
+    });
+
+    it('should prefer JIRA_COOKIE env var over stored config', () => {
+      config.set('server', 'https://test.atlassian.net');
+      config.set('token', 'testtoken');
+      config.set('cookie', 'stored-cookie');
+      process.env.JIRA_COOKIE = 'env-cookie';
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.cookie).toBe('env-cookie');
+    });
+
+    it('should pick up cookie via JIRA_COOKIE alongside JIRA_HOST env vars', () => {
+      process.env.JIRA_HOST = 'https://test.atlassian.net';
+      process.env.JIRA_API_TOKEN = 'testtoken';
+      process.env.JIRA_COOKIE = 'env-cookie';
+
+      const requiredConfig = config.getRequiredConfig();
+      expect(requiredConfig.cookie).toBe('env-cookie');
     });
   });
 
