@@ -1,3 +1,15 @@
+# [2.11.0](https://github.com/pchuri/jira-cli/compare/v2.10.0...v2.11.0) (2026-09-23)
+
+
+### Bug Fixes
+
+* **tests:** pin XDG_CONFIG_HOME and APPDATA in config test setup ([#50](https://github.com/pchuri/jira-cli/issues/50)) ([86ed81e](https://github.com/pchuri/jira-cli/commit/86ed81eeb9f7ac23dcda59af74642771b269fee4))
+
+
+### Features
+
+* add multi-profile support for managing multiple Jira instances ([#46](https://github.com/pchuri/jira-cli/issues/46)) ([b8b1e65](https://github.com/pchuri/jira-cli/commit/b8b1e65dd25482931667292e69dbd2b0fd9e6d18))
+
 # [2.10.0](https://github.com/pchuri/jira-cli/compare/v2.9.0...v2.10.0) (2026-09-23)
 
 
