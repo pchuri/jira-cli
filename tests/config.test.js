@@ -7,6 +7,8 @@ describe('Config', () => {
   let config;
   let fakeHome;
   let homedirSpy;
+  let savedXdgConfigHome;
+  let savedAppData;
 
   beforeEach(() => {
     // Config reads/writes under os.homedir() (both the new ~/.jira-cli store
@@ -15,6 +17,14 @@ describe('Config', () => {
     // pick up, the real machine's config.
     fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'jira-cli-fakehome-'));
     homedirSpy = jest.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+    // The legacy conf-store lookup also honors XDG_CONFIG_HOME (Linux) and
+    // APPDATA (Windows) ahead of the mocked homedir, so pin both inside the
+    // fake home. Otherwise the migration tests pass or fail depending on the
+    // ambient machine environment (e.g. green on macOS, red on Linux CI).
+    savedXdgConfigHome = process.env.XDG_CONFIG_HOME;
+    savedAppData = process.env.APPDATA;
+    process.env.XDG_CONFIG_HOME = path.join(fakeHome, '.config');
+    process.env.APPDATA = path.join(fakeHome, 'AppData', 'Roaming');
     config = new Config();
     delete process.env.JIRA_HOST;
     delete process.env.JIRA_DOMAIN;
@@ -32,6 +42,16 @@ describe('Config', () => {
 
   afterEach(() => {
     homedirSpy.mockRestore();
+    if (savedXdgConfigHome === undefined) {
+      delete process.env.XDG_CONFIG_HOME;
+    } else {
+      process.env.XDG_CONFIG_HOME = savedXdgConfigHome;
+    }
+    if (savedAppData === undefined) {
+      delete process.env.APPDATA;
+    } else {
+      process.env.APPDATA = savedAppData;
+    }
     fs.rmSync(fakeHome, { recursive: true, force: true });
   });
 
@@ -871,14 +891,19 @@ describe('Config', () => {
   });
 
   describe('legacy conf-store migration', () => {
+    // Mirrors legacyConfigFile() in lib/config.js, which honors XDG_CONFIG_HOME
+    // (Linux) and APPDATA (Windows) ahead of the home directory. beforeEach
+    // pins both inside the fake home, so this resolves under fakeHomeDir.
     function legacyDirFor(fakeHomeDir) {
       if (process.platform === 'darwin') {
         return path.join(fakeHomeDir, 'Library', 'Preferences', 'jira-cli-nodejs');
       }
       if (process.platform === 'win32') {
-        return path.join(fakeHomeDir, 'AppData', 'Roaming', 'jira-cli-nodejs', 'Config');
+        const appData = process.env.APPDATA || path.join(fakeHomeDir, 'AppData', 'Roaming');
+        return path.join(appData, 'jira-cli-nodejs', 'Config');
       }
-      return path.join(fakeHomeDir, '.config', 'jira-cli-nodejs');
+      const base = process.env.XDG_CONFIG_HOME || path.join(fakeHomeDir, '.config');
+      return path.join(base, 'jira-cli-nodejs');
     }
 
     it('migrates an existing conf-managed store into the "default" profile on first read', () => {
