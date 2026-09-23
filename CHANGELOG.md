@@ -1,3 +1,15 @@
+# [2.9.0](https://github.com/pchuri/jira-cli/compare/v2.8.1...v2.9.0) (2026-09-23)
+
+
+### Bug Fixes
+
+* **deps:** bump axios to address high-severity advisories ([#48](https://github.com/pchuri/jira-cli/issues/48)) ([17c7275](https://github.com/pchuri/jira-cli/commit/17c72754a9e547bfb3ac3aa468fa84a2459e4644))
+
+
+### Features
+
+* add Claude Code marketplace plugin ([#44](https://github.com/pchuri/jira-cli/issues/44)) ([474f0d3](https://github.com/pchuri/jira-cli/commit/474f0d33c06b35e63269a8b86264a9f456c91e84)), closes [pchuri/confluence-cli#95](https://github.com/pchuri/confluence-cli/issues/95)
+
 ## [2.8.1](https://github.com/pchuri/jira-cli/compare/v2.8.0...v2.8.1) (2026-06-18)
 
 
