@@ -93,6 +93,8 @@ describe('InstallSkillCommand', () => {
         __dirname,
         '..',
         '..',
+        'plugins',
+        'jira',
         'skills',
         'jira',
         'SKILL.md'

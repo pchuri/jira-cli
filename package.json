@@ -48,7 +48,8 @@
   "files": [
     "bin/",
     "lib/",
-    "skills/",
+    "plugins/",
+    ".claude-plugin/",
     "README.md",
     "LICENSE",
     "SECURITY.md"

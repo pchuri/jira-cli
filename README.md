@@ -35,15 +35,28 @@ npm install
 npm link
 ```
 
-### Claude Code Skill
+### Claude Code Integration
 
-Install the packaged Jira skill into the current project:
+jira-cli ships as a [Claude Code plugin](https://docs.anthropic.com/en/docs/claude-code/plugins). Once installed, Claude Code understands all jira-cli commands automatically and receives updates when the skill is improved.
+
+#### Option 1: Install as Plugin (recommended)
+
+Add the marketplace and install the plugin:
+
+```bash
+/plugin marketplace add pchuri/jira-cli
+/plugin install jira@pchuri-jira-cli
+```
+
+#### Option 2: Install Skill manually
+
+If you prefer not to use the plugin system, copy the skill documentation into your project:
 
 ```bash
 jira install-skill
 ```
 
-This copies the skill to `./.claude/skills/jira/SKILL.md`.
+This copies the skill to `./.claude/skills/jira/SKILL.md`. Claude Code picks it up automatically.
 
 If the file already exists, the command errors by default. Use `--force` to overwrite:
 

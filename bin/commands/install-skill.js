@@ -11,7 +11,7 @@ function createInstallSkillCommand(factory) {
     .action((options) => {
       const io = factory.getIOStreams();
       const analytics = factory.getAnalytics();
-      const sourceFile = path.join(__dirname, '..', '..', 'skills', 'jira', 'SKILL.md');
+      const sourceFile = path.join(__dirname, '..', '..', 'plugins', 'jira', 'skills', 'jira', 'SKILL.md');
       const destinationDir = path.resolve(expandHomePath(options.dest));
       const destinationFile = path.join(destinationDir, 'SKILL.md');
 
