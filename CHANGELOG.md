@@ -1,3 +1,10 @@
+# [2.12.0](https://github.com/pchuri/jira-cli/compare/v2.11.0...v2.12.0) (2026-09-23)
+
+
+### Features
+
+* support cookie-only authentication ([6529ffd](https://github.com/pchuri/jira-cli/commit/6529ffd8abdf878e60e32601e497afa8dda08062)), closes [#47](https://github.com/pchuri/jira-cli/issues/47)
+
 # [2.11.0](https://github.com/pchuri/jira-cli/compare/v2.10.0...v2.11.0) (2026-09-23)
 
 
