@@ -1,3 +1,10 @@
+# [2.10.0](https://github.com/pchuri/jira-cli/compare/v2.9.0...v2.10.0) (2026-09-23)
+
+
+### Features
+
+* support session cookie for SSO-gated on-prem Jira instances ([#45](https://github.com/pchuri/jira-cli/issues/45)) ([00abfd8](https://github.com/pchuri/jira-cli/commit/00abfd8dfe7d74564921e9c3e929a9966ec7f6e0))
+
 # [2.9.0](https://github.com/pchuri/jira-cli/compare/v2.8.1...v2.9.0) (2026-09-23)
 
 
