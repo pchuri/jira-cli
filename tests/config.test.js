@@ -5,11 +5,17 @@ const os = require('os');
 
 describe('Config', () => {
   let config;
+  let fakeHome;
+  let homedirSpy;
 
   beforeEach(() => {
+    // Config reads/writes under os.homedir() (both the new ~/.jira-cli store
+    // and, as a migration fallback, the old conf-managed location) - mock it
+    // to a fresh throwaway directory so tests never touch, or accidentally
+    // pick up, the real machine's config.
+    fakeHome = fs.mkdtempSync(path.join(os.tmpdir(), 'jira-cli-fakehome-'));
+    homedirSpy = jest.spyOn(os, 'homedir').mockReturnValue(fakeHome);
     config = new Config();
-    // Clear any existing config and environment variables
-    config.clear();
     delete process.env.JIRA_HOST;
     delete process.env.JIRA_DOMAIN;
     delete process.env.JIRA_USERNAME;
@@ -20,12 +26,18 @@ describe('Config', () => {
     delete process.env.JIRA_TLS_CLIENT_CERT;
     delete process.env.JIRA_TLS_CLIENT_KEY;
     delete process.env.JIRA_TLS_CA_CERT;
+    delete process.env.JIRA_PROFILE;
+    delete process.env.JIRA_CLI_CONFIG_DIR;
+  });
+
+  afterEach(() => {
+    homedirSpy.mockRestore();
+    fs.rmSync(fakeHome, { recursive: true, force: true });
   });
 
   describe('constructor', () => {
     it('should create Config instance', () => {
       expect(config).toBeInstanceOf(Config);
-      expect(config.config).toBeDefined();
     });
   });
 
@@ -711,6 +723,194 @@ describe('Config', () => {
       const requiredConfig = config.getRequiredConfig();
       expect(requiredConfig.authType).toBe('bearer');
       expect(requiredConfig.token).toBe('testtoken');
+    });
+  });
+
+  describe('multi-profile isolation', () => {
+    it('should keep two profiles fully separate', () => {
+      config.set('server', 'https://default.atlassian.net', 'default');
+      config.set('token', 'default-token', 'default');
+      config.set('server', 'https://work.atlassian.net', 'work');
+      config.set('token', 'work-token', 'work');
+
+      expect(config.get('server', 'default')).toBe('https://default.atlassian.net');
+      expect(config.get('server', 'work')).toBe('https://work.atlassian.net');
+      expect(config.getRequiredConfig('default').server).toBe('https://default.atlassian.net');
+      expect(config.getRequiredConfig('work').server).toBe('https://work.atlassian.net');
+    });
+
+    it('should default to the active profile when no profileName is given', () => {
+      config.set('server', 'https://work.atlassian.net', 'work');
+      config.set('token', 'work-token', 'work');
+      config.setActiveProfile('work');
+
+      expect(config.get('server')).toBe('https://work.atlassian.net');
+      expect(config.getRequiredConfig().server).toBe('https://work.atlassian.net');
+    });
+
+    it('should not switch the active profile when writing to a non-active one', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+      config.set('server', 'https://work.atlassian.net', 'work');
+
+      const { activeProfile } = config.listProfiles();
+      expect(activeProfile).toBe('default');
+    });
+  });
+
+  describe('profile management', () => {
+    it('should report no profiles when nothing is configured', () => {
+      expect(config.listProfiles()).toEqual({ activeProfile: null, profiles: [] });
+    });
+
+    it('should list profiles with the active marker', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+      config.set('server', 'https://work.atlassian.net', 'work');
+      config.set('token', 'work-token', 'work');
+
+      const { activeProfile, profiles } = config.listProfiles();
+      expect(activeProfile).toBe('default');
+      expect(profiles).toEqual(expect.arrayContaining([
+        expect.objectContaining({ name: 'default', active: true, server: 'https://default.atlassian.net' }),
+        expect.objectContaining({ name: 'work', active: false, server: 'https://work.atlassian.net' })
+      ]));
+    });
+
+    it('should switch the active profile with setActiveProfile', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+      config.set('server', 'https://work.atlassian.net', 'work');
+      config.set('token', 'work-token', 'work');
+
+      config.setActiveProfile('work');
+      expect(config.listProfiles().activeProfile).toBe('work');
+    });
+
+    it('should throw a clear error when switching to a nonexistent profile', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+
+      expect(() => config.setActiveProfile('doesnotexist')).toThrow(/not found/);
+    });
+
+    it('should delete a non-active profile', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+      config.set('server', 'https://work.atlassian.net', 'work');
+      config.set('token', 'work-token', 'work');
+
+      config.deleteProfile('work');
+      expect(config.listProfiles().profiles.map(p => p.name)).toEqual(['default']);
+    });
+
+    it('should reassign the active profile when the active one is deleted', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+      config.set('server', 'https://work.atlassian.net', 'work');
+      config.set('token', 'work-token', 'work');
+      config.setActiveProfile('work');
+
+      config.deleteProfile('work');
+      expect(config.listProfiles().activeProfile).toBe('default');
+    });
+
+    it('should refuse to delete the only remaining profile', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+
+      expect(() => config.deleteProfile('default')).toThrow('Cannot delete the only remaining profile.');
+    });
+
+    it('should throw when deleting a nonexistent profile', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+
+      expect(() => config.deleteProfile('doesnotexist')).toThrow(/not found/);
+    });
+
+    it('should validate profile names', () => {
+      expect(config.isValidProfileName('work')).toBe(true);
+      expect(config.isValidProfileName('work-2')).toBe(true);
+      expect(config.isValidProfileName('work_2')).toBe(true);
+      expect(config.isValidProfileName('work 2')).toBe(false);
+      expect(config.isValidProfileName('work/2')).toBe(false);
+    });
+
+    it('should throw a "not found" error with available profiles listed from getRequiredConfig', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+
+      expect(() => config.getRequiredConfig('doesnotexist')).toThrow(/Profile "doesnotexist" not found/);
+      expect(() => config.getRequiredConfig('doesnotexist')).toThrow(/default/);
+    });
+  });
+
+  describe('JIRA_PROFILE env var resolution', () => {
+    it('should resolve the profile named by JIRA_PROFILE when no explicit profileName is passed', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+      config.set('server', 'https://work.atlassian.net', 'work');
+      config.set('token', 'work-token', 'work');
+
+      process.env.JIRA_PROFILE = 'work';
+
+      expect(config.getRequiredConfig().server).toBe('https://work.atlassian.net');
+    });
+
+    it('should let an explicit profileName argument override JIRA_PROFILE', () => {
+      config.set('server', 'https://default.atlassian.net');
+      config.set('token', 'default-token');
+      config.set('server', 'https://work.atlassian.net', 'work');
+      config.set('token', 'work-token', 'work');
+
+      process.env.JIRA_PROFILE = 'work';
+
+      expect(config.getRequiredConfig('default').server).toBe('https://default.atlassian.net');
+    });
+  });
+
+  describe('legacy conf-store migration', () => {
+    function legacyDirFor(fakeHomeDir) {
+      if (process.platform === 'darwin') {
+        return path.join(fakeHomeDir, 'Library', 'Preferences', 'jira-cli-nodejs');
+      }
+      if (process.platform === 'win32') {
+        return path.join(fakeHomeDir, 'AppData', 'Roaming', 'jira-cli-nodejs', 'Config');
+      }
+      return path.join(fakeHomeDir, '.config', 'jira-cli-nodejs');
+    }
+
+    it('migrates an existing conf-managed store into the "default" profile on first read', () => {
+      const legacyDir = legacyDirFor(fakeHome);
+      fs.mkdirSync(legacyDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(legacyDir, 'config.json'),
+        JSON.stringify({ server: 'https://legacy.atlassian.net', token: 'legacy-token', apiVersion: '2' })
+      );
+
+      const fresh = new Config();
+      const required = fresh.getRequiredConfig();
+      expect(required.server).toBe('https://legacy.atlassian.net');
+      expect(required.token).toBe('legacy-token');
+      expect(required.apiVersion).toBe('2');
+
+      const { activeProfile, profiles } = fresh.listProfiles();
+      expect(activeProfile).toBe('default');
+      expect(profiles.map(p => p.name)).toEqual(['default']);
+
+      // Migrated in place, and the legacy file is left untouched as a safety net.
+      expect(fs.existsSync(path.join(fakeHome, '.jira-cli', 'config.json'))).toBe(true);
+      expect(fs.existsSync(path.join(legacyDir, 'config.json'))).toBe(true);
+    });
+
+    it('does not migrate an empty legacy file', () => {
+      const legacyDir = legacyDirFor(fakeHome);
+      fs.mkdirSync(legacyDir, { recursive: true });
+      fs.writeFileSync(path.join(legacyDir, 'config.json'), JSON.stringify({}));
+
+      const fresh = new Config();
+      expect(fresh.listProfiles()).toEqual({ activeProfile: null, profiles: [] });
     });
   });
 });
