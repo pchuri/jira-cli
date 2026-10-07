@@ -1,3 +1,10 @@
+## [2.12.1](https://github.com/pchuri/jira-cli/compare/v2.12.0...v2.12.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **deps:** bump npm override to 11.21.0 to patch bundled tar and glob CVEs ([0ee41cb](https://github.com/pchuri/jira-cli/commit/0ee41cbe59f889c662a794a1ac03cbeb6c01ac29))
+
 # [2.12.0](https://github.com/pchuri/jira-cli/compare/v2.11.0...v2.12.0) (2026-09-23)
 
 
