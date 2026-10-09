@@ -368,6 +368,8 @@ jira issue list --jql "bug" --limit 5
 
 ### Manage Comments
 
+Editing and deleting comments requires `--issue <key>` because Jira scopes these endpoints to an issue. The comment ID and text keep their existing argument positions.
+
 ```bash
 # Add a comment to an issue
 jira issue comment add PROJ-123 "Review completed"
@@ -391,13 +393,13 @@ jira issue comment list PROJ-123
 jira issue comment list PROJ-123 --format json
 
 # Edit an existing comment
-jira issue comment edit 12345 "Updated comment text"
+jira issue comment edit 12345 "Updated comment text" --issue PROJ-123
 
 # Edit comment from file
-jira issue comment edit 12345 --file ./updated-notes.md
+jira issue comment edit 12345 --issue PROJ-123 --file ./updated-notes.md
 
 # Delete a comment (requires confirmation)
-jira issue comment delete 12345 --force
+jira issue comment delete 12345 --issue PROJ-123 --force
 
 # Using command alias
 jira issue c add PROJ-123 "Quick comment"
@@ -485,8 +487,8 @@ jira sprint list --board 123 --state active
 | `issue delete <key>` | Delete issue | **Required:** `--force` |
 | `issue comment add <key> [text]` | Add comment to issue (alias: c) | `[text]` or `--file <path>`<br>**Optional:** `--internal` |
 | `issue comment list <key>` | List comments on issue | `--format <table\|json>` (default: table) |
-| `issue comment edit <id> [text]` | Edit existing comment | `[text]` or `--file <path>` |
-| `issue comment delete <id>` | Delete comment | **Required:** `--force` |
+| `issue comment edit <id> [text]` | Edit existing comment | **Required:** `--issue <key>`, plus `[text]` or `--file <path>` |
+| `issue comment delete <id>` | Delete comment | **Required:** `--issue <key>`, `--force` |
 | `issue remote-link list <key>` | List remote links on issue (alias: rl) | `--format <table\|json>` (default: table), `--global-id <id>` |
 | `issue remote-link add <key>` | Add remote link to issue | **Required:** `--url <url>`, `--title <title>`<br>**Optional:** `--global-id <id>`, `--relationship <rel>`, `--summary <text>`, `--icon-url <url>`, `--icon-title <title>` |
 | `issue remote-link update <key> <linkId>` | Update an existing remote link | **At least one required:**<br>`--url <url>`, `--title <title>`, `--relationship <rel>`, `--summary <text>`, `--icon-url <url>`, `--icon-title <title>` |
@@ -562,10 +564,10 @@ jira issue comment add PROJ-123 --file ./review-notes.md
 jira issue comment list PROJ-123
 
 # Edit a comment
-jira issue comment edit 12345 "Updated comment"
+jira issue comment edit 12345 "Updated comment" --issue PROJ-123
 
 # Delete a comment
-jira issue comment delete 12345 --force
+jira issue comment delete 12345 --issue PROJ-123 --force
 
 # Add a GitHub PR as a remote link
 jira issue remote-link add PROJ-123 \

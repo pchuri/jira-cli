@@ -399,9 +399,9 @@ describe('JiraClient', () => {
       const mockComment = { id: '10000', body: 'Updated comment' };
       client.clientV3.request.mockResolvedValue({ data: mockComment });
 
-      const result = await client.updateComment('10000', 'Updated comment');
+      const result = await client.updateComment('TEST-1', '10000', 'Updated comment');
 
-      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'put', url: '/comment/10000', data: {
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'put', url: '/issue/TEST-1/comment/10000', data: {
         body: {
           type: 'doc',
           version: 1,
@@ -414,9 +414,9 @@ describe('JiraClient', () => {
     test('deleteComment should make correct API call', async () => {
       client.clientV3.request.mockResolvedValue({});
 
-      const result = await client.deleteComment('10000');
+      const result = await client.deleteComment('TEST-1', '10000');
 
-      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'delete', url: '/comment/10000' });
+      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'delete', url: '/issue/TEST-1/comment/10000' });
       expect(result).toBe(true);
     });
 
@@ -780,7 +780,9 @@ describe('JiraClient', () => {
       });
 
       function makeAdapterClient() {
-        const c = new JiraClient(mockConfig);
+        // Exercise transport retries only. Auto mode could send an unmocked
+        // v2 request after the mocked v3 adapter returns 404.
+        const c = new JiraClient({ ...mockConfig, apiVersion: 3 });
         const adapter = jest.fn();
         c.clientV3.defaults.adapter = adapter;
         return { c, adapter };
