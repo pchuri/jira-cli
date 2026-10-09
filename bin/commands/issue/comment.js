@@ -67,13 +67,16 @@ async function listComments(client, io, issueKey, options = {}) {
 }
 
 async function editComment(client, io, commentId, text, options = {}) {
+  if (!options.issue) {
+    throw new Error('Issue key is required. Use: jira issue comment edit <COMMENT-ID> [text] --issue <KEY>');
+  }
   if (!text && !options.file) {
     throw new Error(
       'Comment text is required.\n\n' +
-      'Usage: jira issue comment edit <COMMENT-ID> [text] [options]\n\n' +
+      'Usage: jira issue comment edit <COMMENT-ID> [text] --issue <KEY> [options]\n\n' +
       'Provide comment text either as:\n' +
-      '  - Direct argument: jira issue comment edit 12345 "Updated text"\n' +
-      '  - From file: jira issue comment edit 12345 --file ./updated.md\n\n' +
+      '  - Direct argument: jira issue comment edit 12345 "Updated text" --issue PROJ-123\n' +
+      '  - From file: jira issue comment edit 12345 --issue PROJ-123 --file ./updated.md\n\n' +
       'Options:\n' +
       '  --file <path>  Read comment body from file'
     );
@@ -89,25 +92,29 @@ async function editComment(client, io, commentId, text, options = {}) {
   }
 
   const spinner = io.spinner(`Updating comment ${commentId}...`);
-  await client.updateComment(commentId, commentBody);
+  await client.updateComment(options.issue, commentId, commentBody);
   spinner.stop();
 
   io.success(`Comment ${commentId} updated successfully`);
 }
 
 async function deleteComment(client, io, commentId, options = {}) {
+  if (!options.issue) {
+    throw new Error('Issue key is required. Use: jira issue comment delete <COMMENT-ID> --issue <KEY> --force');
+  }
   io.out(chalk.bold.red('\nWARNING: You are about to delete this comment:'));
+  io.out(`  Issue: ${chalk.cyan(options.issue)}`);
   io.out(`  Comment ID: ${chalk.cyan(commentId)}\n`);
 
   if (!options.force) {
     throw new Error(
       'Deletion requires --force flag to confirm.\n' +
-      `Use: jira issue comment delete ${commentId} --force`
+      `Use: jira issue comment delete ${commentId} --issue ${options.issue} --force`
     );
   }
 
   const spinner = io.spinner('Deleting comment...');
-  await client.deleteComment(commentId);
+  await client.deleteComment(options.issue, commentId);
   spinner.stop();
 
   io.success(`Comment ${commentId} deleted successfully`);
@@ -163,8 +170,9 @@ function register(parent, factory) {
     .command('edit <commentId> [text]')
     .description('edit an existing comment\n\n' +
       'Examples:\n' +
-      '  $ jira issue comment edit 12345 "Updated comment"\n' +
-      '  $ jira issue comment edit 12345 --file ./updated-notes.md')
+      '  $ jira issue comment edit 12345 "Updated comment" --issue PROJ-123\n' +
+      '  $ jira issue comment edit 12345 --issue PROJ-123 --file ./updated-notes.md')
+    .option('--issue <key>', 'issue key or ID containing the comment (required)')
     .option('--file <path>', 'read comment body from file')
     .action(async (commentId, text, options) => {
       const io = factory.getIOStreams();
@@ -182,7 +190,8 @@ function register(parent, factory) {
     .command('delete <commentId>')
     .description('delete a comment\n\n' +
       'Examples:\n' +
-      '  $ jira issue comment delete 12345 --force')
+      '  $ jira issue comment delete 12345 --issue PROJ-123 --force')
+    .option('--issue <key>', 'issue key or ID containing the comment (required)')
     .option('-f, --force', 'force delete without confirmation')
     .action(async (commentId, options) => {
       const io = factory.getIOStreams();

@@ -124,6 +124,82 @@ describe('IssueCommand', () => {
     });
   });
 
+  describe('comment command execution', () => {
+    let exitSpy;
+
+    beforeEach(() => {
+      exitSpy = jest.spyOn(process, 'exit').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      exitSpy.mockRestore();
+    });
+
+    it('keeps comment ID and text positions and passes --issue to edit', async () => {
+      await issueCommand.parseAsync([
+        'node', 'jira', 'comment', 'edit', '10000', 'Updated text', '--issue', 'PROJ-123'
+      ]);
+      expect(mockJiraClient.updateComment).toHaveBeenCalledWith('PROJ-123', '10000', 'Updated text');
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it('supports editing from a file with --issue', async () => {
+      const fs = require('fs');
+      const os = require('os');
+      const path = require('path');
+      const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'jira-comment-'));
+      const file = path.join(directory, 'comment.md');
+      try {
+        fs.writeFileSync(file, 'Updated from file\n');
+        await issueCommand.parseAsync([
+          'node', 'jira', 'comment', 'edit', '10000', '--issue', 'PROJ-123', '--file', file
+        ]);
+        expect(mockJiraClient.updateComment).toHaveBeenCalledWith('PROJ-123', '10000', 'Updated from file\n');
+        expect(exitSpy).not.toHaveBeenCalled();
+      } finally {
+        fs.unlinkSync(file);
+        fs.rmdirSync(directory);
+      }
+    });
+
+    it('keeps the comment ID position and passes --issue to delete', async () => {
+      await issueCommand.parseAsync([
+        'node', 'jira', 'comment', 'delete', '10000', '--issue', 'PROJ-123', '--force'
+      ]);
+      expect(mockJiraClient.deleteComment).toHaveBeenCalledWith('PROJ-123', '10000');
+      expect(exitSpy).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['edit', ['Updated text'], 'updateComment'],
+      ['delete', ['--force'], 'deleteComment']
+    ])('rejects %s without --issue before writing', async (command, args, method) => {
+      await issueCommand.parseAsync(['node', 'jira', 'comment', command, '10000', ...args]);
+      expect(mockJiraClient[method]).not.toHaveBeenCalled();
+      expect(mockIOStreams.error).toHaveBeenCalledWith(expect.stringContaining('Issue key is required'));
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('still requires --force to delete a scoped comment', async () => {
+      await issueCommand.parseAsync([
+        'node', 'jira', 'comment', 'delete', '10000', '--issue', 'PROJ-123'
+      ]);
+      expect(mockJiraClient.deleteComment).not.toHaveBeenCalled();
+      expect(mockIOStreams.error).toHaveBeenCalledWith(expect.stringContaining('--issue PROJ-123 --force'));
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('still rejects editing with both text and --file', async () => {
+      await issueCommand.parseAsync([
+        'node', 'jira', 'comment', 'edit', '10000', 'Updated text',
+        '--issue', 'PROJ-123', '--file', './comment.md'
+      ]);
+      expect(mockJiraClient.updateComment).not.toHaveBeenCalled();
+      expect(mockIOStreams.error).toHaveBeenCalledWith(expect.stringContaining('Cannot use both'));
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
   describe('remote-link subcommand', () => {
     let remoteLinkCommand;
 

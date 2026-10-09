@@ -319,12 +319,12 @@ jira issue comment list PROJ-123 --format json
 Edit an existing comment.
 
 ```sh
-jira issue comment edit <commentId> [text] [--file <path>]
+jira issue comment edit <commentId> [text] --issue <key> [--file <path>]
 ```
 
 ```sh
-jira issue comment edit 12345 "Updated comment"
-jira issue comment edit 12345 --file ./updated-notes.md
+jira issue comment edit 12345 "Updated comment" --issue PROJ-123
+jira issue comment edit 12345 --issue PROJ-123 --file ./updated-notes.md
 ```
 
 ### `issue comment delete <commentId>`
@@ -332,7 +332,7 @@ jira issue comment edit 12345 --file ./updated-notes.md
 Delete a comment.
 
 ```sh
-jira issue comment delete <commentId> --force
+jira issue comment delete <commentId> --issue <key> --force
 ```
 
 ### `issue remote-link list <key>`

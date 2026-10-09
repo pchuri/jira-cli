@@ -17,7 +17,7 @@ const client = new JiraClient(config)
 **Parameters:**
 - `config` (Object): Configuration object containing server, username, token, and optional apiVersion (`auto`, `2`, `3`)
 
-When `apiVersion` is `auto`, the client starts with v3 and retries with v2 on certain endpoint failures; the successful version is kept for the rest of the process.
+When `apiVersion` is `auto`, the client starts with v3 and retries with v2 on certain endpoint failures; the successful version is kept for the rest of the process. Empty successful responses (including HTTP 204) do not trigger version fallback.
 
 #### Methods
 
@@ -28,6 +28,17 @@ When `apiVersion` is `auto`, the client starts with v3 and retries with v2 on ce
 - `createIssue(issueData)` - Create new issue  
 - `updateIssue(issueKey, updateData)` - Update existing issue
 - `deleteIssue(issueKey)` - Delete issue
+
+String `fields.description` values are encoded as Atlassian Document Format (ADF) for v3 and retained as text for v2. The payload is rebuilt if auto mode changes API version, without mutating the caller's data. Omitted descriptions, `null`, and pre-built ADF are passed through.
+
+##### Comment Operations
+
+- `getComments(issueKey)` - List comments on an issue
+- `addComment(issueKey, body, options)` - Add a comment
+- `updateComment(issueKey, commentId, body)` - Update a comment on the specified issue
+- `deleteComment(issueKey, commentId)` - Delete a comment on the specified issue
+
+Comment edit/delete require the containing issue key or ID. Callers of the previous comment-ID-only methods must now supply it as the first argument. The CLI preserves its positional arguments and adds the required `--issue <key>` option, for example `jira issue comment edit 12345 "Updated text" --issue PROJ-123`.
 
 ##### Project Operations
 
