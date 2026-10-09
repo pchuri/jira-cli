@@ -1,3 +1,15 @@
+# [3.0.0](https://github.com/pchuri/jira-cli/compare/v2.12.1...v3.0.0) (2026-10-09)
+
+
+### Bug Fixes
+
+* honor Jira write response and payload contracts ([#52](https://github.com/pchuri/jira-cli/issues/52)) ([f3dc3e9](https://github.com/pchuri/jira-cli/commit/f3dc3e967d2b5f507fa20af6535423ef28653942))
+
+
+### BREAKING CHANGES
+
+* Comment edit and delete commands now require --issue <key>. API callers must use updateComment(issueKey, commentId, body) and deleteComment(issueKey, commentId).
+
 ## [2.12.1](https://github.com/pchuri/jira-cli/compare/v2.12.0...v2.12.1) (2026-10-07)
 
 
