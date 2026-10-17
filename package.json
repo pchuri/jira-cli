@@ -80,9 +80,9 @@
   },
   "overrides": {
     "form-data": "4.0.6",
-    "tmp": "0.2.5",
+    "tmp": "0.2.7",
     "npm": "11.21.0",
-    "brace-expansion": "2.0.2",
+    "brace-expansion": "2.1.7",
     "semver": "7.6.2",
     "tar": "7.5.22",
     "ip": "2.0.1",
