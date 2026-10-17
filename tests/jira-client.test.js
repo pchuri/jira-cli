@@ -259,10 +259,10 @@ describe('JiraClient', () => {
 
       const result = await client.searchIssues('project = TEST');
 
+      // v3 enhanced search uses cursor paging: no startAt offset is sent.
       expect(client.clientV3.get).toHaveBeenCalledWith('/search/jql', {
         params: {
           jql: 'project = TEST',
-          startAt: 0,
           maxResults: 50,
           fields: ['summary', 'status', 'assignee', 'created', 'updated']
         }
@@ -308,7 +308,11 @@ describe('JiraClient', () => {
 
       const result = await client.getComments('TEST-1');
 
-      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'get', url: '/issue/TEST-1/comment' });
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'get',
+        url: '/issue/TEST-1/comment',
+        params: { startAt: 0, maxResults: 100 }
+      });
       expect(result).toEqual(mockComments);
     });
 
