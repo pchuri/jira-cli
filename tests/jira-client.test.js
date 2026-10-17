@@ -259,10 +259,10 @@ describe('JiraClient', () => {
 
       const result = await client.searchIssues('project = TEST');
 
+      // v3 enhanced search uses cursor paging: no startAt offset is sent.
       expect(client.clientV3.get).toHaveBeenCalledWith('/search/jql', {
         params: {
           jql: 'project = TEST',
-          startAt: 0,
           maxResults: 50,
           fields: ['summary', 'status', 'assignee', 'created', 'updated']
         }
@@ -308,7 +308,11 @@ describe('JiraClient', () => {
 
       const result = await client.getComments('TEST-1');
 
-      expect(client.clientV3.request).toHaveBeenCalledWith({ method: 'get', url: '/issue/TEST-1/comment' });
+      expect(client.clientV3.request).toHaveBeenCalledWith({
+        method: 'get',
+        url: '/issue/TEST-1/comment',
+        params: { startAt: 0, maxResults: 100 }
+      });
       expect(result).toEqual(mockComments);
     });
 
@@ -372,18 +376,22 @@ describe('JiraClient', () => {
       expect(result).toEqual({ id: '10001' });
     });
 
-    test('addComment falls back to v2 when v3 returns a non-JSON 200 response', async () => {
+    // Inverted: previously mandated replaying the write on v2. A 2xx non-JSON
+    // answer to a write is ambiguous (may be committed) and must not be replayed.
+    test('addComment does NOT fall back to v2 when v3 returns a non-JSON 200 response', async () => {
       client.clientV3.request.mockResolvedValue({
+        status: 200,
         headers: { 'content-type': 'text/html' },
         data: '<html>login</html>'
       });
       client.clientV2.request = jest.fn().mockResolvedValue({ data: { id: '10001' } });
 
-      const result = await client.addComment('TEST-1', 'New comment');
+      await expect(client.addComment('TEST-1', 'New comment'))
+        .rejects.toMatchObject({ code: 'JIRA_AMBIGUOUS_WRITE_RESPONSE', noVersionFallback: true, status: 200 });
 
-      expect(client.clientV2.request).toHaveBeenCalledWith({ method: 'post', url: '/issue/TEST-1/comment', data: { body: 'New comment' } });
-      expect(client.apiVersion).toBe(2);
-      expect(result).toEqual({ id: '10001' });
+      expect(client.clientV3.request).toHaveBeenCalledTimes(1);
+      expect(client.clientV2.request).not.toHaveBeenCalled();
+      expect(client.apiVersion).toBe(3);
     });
 
     test('addComment does not fall back on unrelated 400 errors', async () => {
@@ -883,6 +891,233 @@ describe('JiraClient', () => {
         expect(sleepSpy).toHaveBeenNthCalledWith(1, 1000);
         expect(sleepSpy).toHaveBeenNthCalledWith(2, 2000);
         expect(sleepSpy).toHaveBeenNthCalledWith(3, 4000);
+      });
+
+      test('bounds retries for GET network errors at max retries', async () => {
+        const { c, adapter } = makeAdapterClient();
+        adapter.mockImplementation(config => networkErrorAdapter(config, 'ECONNRESET'));
+
+        await expect(c.getIssue('TEST-1')).rejects.toBeDefined();
+        expect(adapter).toHaveBeenCalledTimes(4); // initial + 3 retries
+        expect(sleepSpy).toHaveBeenCalledTimes(3);
+      });
+
+      test.each(['head', 'options'])('still retries safe %s requests', async method => {
+        const { c, adapter } = makeAdapterClient();
+        adapter
+          .mockImplementationOnce(config => networkErrorAdapter(config, 'ETIMEDOUT'))
+          .mockImplementationOnce(config => okResponse(config));
+
+        await c.requestApi(method, '/issue/TEST-1');
+
+        expect(adapter).toHaveBeenCalledTimes(2);
+      });
+
+      describe('unsafe write methods', () => {
+        const issueData = { fields: { project: { key: 'TEST' }, summary: 'Write once', issuetype: { id: '1' } } };
+
+        test('successful POST is sent exactly once', async () => {
+          const { c, adapter } = makeAdapterClient();
+          adapter.mockImplementation(config => Promise.resolve({
+            status: 201, statusText: 'Created', headers: {}, config, request: {}, data: { key: 'TEST-2' }
+          }));
+
+          const result = await c.createIssue(issueData);
+
+          expect(result).toEqual({ key: 'TEST-2' });
+          expect(adapter).toHaveBeenCalledTimes(1);
+          expect(sleepSpy).not.toHaveBeenCalled();
+        });
+
+        test('POST committed by the server then ECONNRESET is not replayed', async () => {
+          const { c, adapter } = makeAdapterClient();
+          const committed = [];
+          adapter.mockImplementation(config => {
+            committed.push(JSON.parse(config.data));
+            return networkErrorAdapter(config, 'ECONNRESET');
+          });
+
+          await expect(c.createIssue(issueData)).rejects.toBeDefined();
+
+          expect(adapter).toHaveBeenCalledTimes(1);
+          expect(committed).toHaveLength(1);
+          expect(sleepSpy).not.toHaveBeenCalled();
+        });
+
+        test.each([
+          ['post', 'ECONNABORTED'],
+          ['post', 'ETIMEDOUT'],
+          ['put', 'ECONNABORTED'],
+          ['put', 'ETIMEDOUT'],
+          ['patch', 'ETIMEDOUT'],
+          ['delete', 'ECONNABORTED'],
+          ['delete', 'ETIMEDOUT']
+        ])('%s is not replayed after %s', async (method, code) => {
+          const { c, adapter } = makeAdapterClient();
+          adapter.mockImplementation(config => networkErrorAdapter(config, code));
+
+          await expect(c.requestApi(method, '/issue/TEST-1', { fields: {} })).rejects.toBeDefined();
+
+          expect(adapter).toHaveBeenCalledTimes(1);
+          expect(sleepSpy).not.toHaveBeenCalled();
+        });
+
+        test.each([
+          ['post', 500],
+          ['post', 502],
+          ['post', 503],
+          ['put', 503],
+          ['patch', 504],
+          ['delete', 500]
+        ])('%s is not replayed after HTTP %i', async (method, status) => {
+          const { c, adapter } = makeAdapterClient();
+          adapter.mockImplementation(config => httpErrorAdapter(config, status));
+
+          await expect(c.requestApi(method, '/issue/TEST-1', { fields: {} })).rejects.toMatchObject({ status });
+
+          expect(adapter).toHaveBeenCalledTimes(1);
+          expect(sleepSpy).not.toHaveBeenCalled();
+        });
+
+        test('comment POST is not replayed after a timeout', async () => {
+          const { c, adapter } = makeAdapterClient();
+          adapter.mockImplementation(config => networkErrorAdapter(config, 'ECONNABORTED'));
+
+          await expect(c.addComment('TEST-1', 'Once only')).rejects.toBeDefined();
+
+          expect(adapter).toHaveBeenCalledTimes(1);
+        });
+      });
+
+      describe('auto API version fallback for writes', () => {
+        function makeAutoClient() {
+          const c = new JiraClient({ ...mockConfig, apiVersion: 'auto' });
+          const v3 = jest.fn();
+          const v2 = jest.fn();
+          c.clientV3.defaults.adapter = v3;
+          c.clientV2.defaults.adapter = v2;
+          return { c, v3, v2 };
+        }
+
+        const htmlGatewayError = '<html>502 Bad Gateway: /rest/api/3/issue</html>';
+
+        test('does not replay a POST on v2 after an ambiguous 5xx from v3', async () => {
+          const { c, v3, v2 } = makeAutoClient();
+          v3.mockImplementation(config => httpErrorAdapter(config, 502, { 'content-type': 'text/html' }, htmlGatewayError));
+
+          await expect(c.createIssue({ fields: { summary: 'x' } })).rejects.toMatchObject({ status: 502 });
+
+          expect(v3).toHaveBeenCalledTimes(1);
+          expect(v2).not.toHaveBeenCalled();
+          expect(c.apiVersion).toBe(3);
+        });
+
+        test('does not replay a comment POST on v2 after an ambiguous 5xx from v3', async () => {
+          const { c, v3, v2 } = makeAutoClient();
+          v3.mockImplementation(config => httpErrorAdapter(config, 502, { 'content-type': 'text/html' }, htmlGatewayError));
+
+          await expect(c.addComment('TEST-1', 'Once only')).rejects.toMatchObject({ status: 502 });
+
+          expect(v3).toHaveBeenCalledTimes(1);
+          expect(v2).not.toHaveBeenCalled();
+        });
+
+        test('still falls back to v2 for a POST rejected with 404 by v3', async () => {
+          const { c, v3, v2 } = makeAutoClient();
+          v3.mockImplementation(config => httpErrorAdapter(config, 404));
+          v2.mockImplementation(config => Promise.resolve({
+            status: 201, statusText: 'Created', headers: {}, config, request: {}, data: { key: 'TEST-3' }
+          }));
+
+          const result = await c.createIssue({ fields: { summary: 'x' } });
+
+          expect(result).toEqual({ key: 'TEST-3' });
+          expect(v3).toHaveBeenCalledTimes(1);
+          expect(v2).toHaveBeenCalledTimes(1);
+          expect(c.apiVersion).toBe(2);
+        });
+
+        test('still falls back to v2 for a GET that fails with an API-removed 5xx detail after retries', async () => {
+          const { c, v3, v2 } = makeAutoClient();
+          v3.mockImplementation(config => httpErrorAdapter(config, 500, {}, htmlGatewayError));
+          v2.mockImplementation(config => okResponse(config));
+
+          const result = await c.getIssue('TEST-1');
+
+          expect(result).toEqual({ key: 'TEST-1' });
+          expect(v3).toHaveBeenCalledTimes(4);
+          expect(v2).toHaveBeenCalledTimes(1);
+        });
+
+        function okNonJson(config, data, headers = { 'content-type': 'text/html' }) {
+          return Promise.resolve({ status: 200, statusText: 'OK', headers, config, request: {}, data });
+        }
+
+        const migrateHtml = '<html>Please migrate to /rest/api/2 — the requested API has been removed (/rest/api/3/issue)</html>';
+
+        describe.each([
+          ['createIssue POST', c => c.createIssue({ fields: { summary: 'x' } })],
+          ['addComment POST', c => c.addComment('TEST-1', 'Once only')],
+          ['updateIssue PUT', c => c.updateIssue('TEST-1', { fields: { summary: 'y' } })]
+        ])('%s with an ambiguous 200 non-JSON v3 response', (_name, run) => {
+          test.each([
+            ['plain HTML', '<html>ok</html>', { 'content-type': 'text/html' }],
+            ['HTML with /rest/api/ and migrate strings', migrateHtml, { 'content-type': 'text/html' }],
+            ['non-empty string without content-type', 'ok', {}]
+          ])('rejects without v2 replay (%s)', async (_label, body, headers) => {
+            const { c, v3, v2 } = makeAutoClient();
+            v3.mockImplementation(config => okNonJson(config, body, headers));
+            v2.mockImplementation(config => okResponse(config));
+
+            const err = await run(c).then(() => null, e => e);
+
+            expect(err).toBeInstanceOf(Error);
+            expect(err).toMatchObject({ code: 'JIRA_AMBIGUOUS_WRITE_RESPONSE', noVersionFallback: true, status: 200 });
+            expect(err.data).toBeUndefined();
+            expect(err.message).not.toContain(body);
+            expect(v3).toHaveBeenCalledTimes(1);
+            expect(v2).not.toHaveBeenCalled();
+            expect(c.apiVersion).toBe(3);
+          });
+        });
+
+        test('GET with a 200 HTML v3 response still falls back to v2 exactly once', async () => {
+          const { c, v3, v2 } = makeAutoClient();
+          v3.mockImplementation(config => okNonJson(config, '<html>login</html>'));
+          v2.mockImplementation(config => okResponse(config));
+
+          const result = await c.getIssue('TEST-1');
+
+          expect(result).toEqual({ key: 'TEST-1' });
+          expect(v3).toHaveBeenCalledTimes(1);
+          expect(v2).toHaveBeenCalledTimes(1);
+          expect(c.apiVersion).toBe(2);
+        });
+
+        test('comment POST rejected with 400 errors.comment still falls back to v2', async () => {
+          const { c, v3, v2 } = makeAutoClient();
+          v3.mockImplementation(config => httpErrorAdapter(config, 400, {}, { errorMessages: [], errors: { comment: 'Comment body is not valid!' } }));
+          v2.mockImplementation(config => Promise.resolve({
+            status: 201, statusText: 'Created', headers: {}, config, request: {}, data: { id: '10001' }
+          }));
+
+          await expect(c.addComment('TEST-1', 'x')).resolves.toEqual({ id: '10001' });
+          expect(v3).toHaveBeenCalledTimes(1);
+          expect(v2).toHaveBeenCalledTimes(1);
+          expect(c.apiVersion).toBe(2);
+        });
+
+        test('a 204 DELETE is sent exactly once', async () => {
+          const { c, v3, v2 } = makeAutoClient();
+          v3.mockImplementation(config => Promise.resolve({
+            status: 204, statusText: 'No Content', headers: {}, config, request: {}, data: ''
+          }));
+
+          await expect(c.deleteIssue('TEST-1')).resolves.toBe(true);
+
+          expect(v3).toHaveBeenCalledTimes(1);
+          expect(v2).not.toHaveBeenCalled();
+        });
       });
     });
   });

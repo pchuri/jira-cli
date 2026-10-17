@@ -9,20 +9,62 @@ const {
 } = require('../../../lib/utils');
 const { readDescriptionFile } = require('./shared');
 
+// Quote a value for POSIX shells so a printed continuation hint can be pasted
+// safely; the token itself is only ever sent to Jira as request data.
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, '\'\\\'\'')}'`;
+}
+
+function parseStartAt(value) {
+  if (value === undefined) return undefined;
+  if (!/^\d+$/.test(String(value).trim())) {
+    throw new Error(`Invalid --start-at value: ${JSON.stringify(value)}. Use a non-negative integer.`);
+  }
+  return Number(String(value).trim());
+}
+
+function printContinuationHint(io, result, startAt) {
+  const issues = Array.isArray(result.issues) ? result.issues : [];
+  const hasCursor = result.nextPageToken !== undefined && result.nextPageToken !== null;
+  if (result.isLast === false || (hasCursor && result.isLast !== true)) {
+    // Jira Cloud enhanced search: no invented total, just the cursor.
+    io.info('More issues are available.');
+    io.info(`Next page token: ${result.nextPageToken}`);
+    io.info(`Re-run the same command with --next-page-token ${shellQuote(result.nextPageToken)} to see the next page.`);
+    return;
+  }
+  if (typeof result.total === 'number') {
+    const offset = typeof result.startAt === 'number' ? result.startAt : (startAt || 0);
+    if (result.total > issues.length) {
+      io.info(`Showing ${issues.length} of ${result.total} total issues`);
+    }
+    const next = offset + issues.length;
+    if (issues.length > 0 && next < result.total) {
+      io.info(`Re-run the same command with --start-at ${next} to see the next page.`);
+    }
+  }
+}
+
 async function listIssues(client, io, options) {
   const spinner = io.spinner('Fetching issues...');
 
   try {
+    if (options.nextPageToken !== undefined && options.startAt !== undefined) {
+      throw new Error('Use either --next-page-token (Jira Cloud) or --start-at (Server/Data Center), not both.');
+    }
+    const startAt = parseStartAt(options.startAt);
     const jql = buildJQL(options);
     const limit = parseInt(options.limit) || 20;
-    const result = await client.searchIssues(jql, {
-      maxResults: limit
-    });
+    const searchOptions = { maxResults: limit };
+    if (options.nextPageToken !== undefined) searchOptions.nextPageToken = options.nextPageToken;
+    if (startAt !== undefined) searchOptions.startAt = startAt;
+    const result = await client.searchIssues(jql, searchOptions);
 
     spinner.stop();
 
     if (result.issues.length === 0) {
       io.info('No issues found');
+      printContinuationHint(io, result, startAt);
       return;
     }
 
@@ -31,9 +73,7 @@ async function listIssues(client, io, options) {
     const table = createIssuesTable(result.issues);
     io.out(table.toString());
 
-    if (result.total > result.issues.length) {
-      io.info(`Showing ${result.issues.length} of ${result.total} total issues`);
-    }
+    printContinuationHint(io, result, startAt);
 
   } catch (err) {
     spinner.stop();
@@ -226,7 +266,9 @@ function register(command, factory) {
       '  $ jira issue list                              # List recent issues\n' +
       '  $ jira issue list --assignee=currentUser      # Your assigned issues\n' +
       '  $ jira issue list --status=Open --limit=50    # Open issues (max 50)\n' +
-      '  $ jira issue list --project=TEST --type=Bug   # Bugs in TEST project')
+      '  $ jira issue list --project=TEST --type=Bug   # Bugs in TEST project\n' +
+      '  $ jira issue list --next-page-token <token>   # Next page (Jira Cloud)\n' +
+      '  $ jira issue list --start-at=20               # Next page (Server/Data Center)')
     .alias('ls')
     .option('--project <project>', 'filter by project key')
     .option('--assignee <assignee>', 'filter by assignee (use "currentUser" for yourself)')
@@ -238,6 +280,8 @@ function register(command, factory) {
     .option('--updated <date>', 'updated since date (e.g., -7d, 2023-01-01)')
     .option('--limit <limit>', 'limit number of results (default: 20)', '20')
     .option('--jql <query>', 'custom JQL expression, AND-composed with other filters')
+    .option('--next-page-token <token>', 'Jira Cloud: fetch the next page using the token printed by the previous page (same filters)')
+    .option('--start-at <offset>', 'Server/Data Center (v2 search): zero-based result offset for the next page')
     .action(async (options) => {
       const io = factory.getIOStreams();
       const client = await factory.getJiraClient();

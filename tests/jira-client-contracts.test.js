@@ -125,16 +125,24 @@ describe('Jira REST write contracts', () => {
       expect(data.fields.description).toBe(description);
     });
 
-    test('retains HTML fallback and rebuilds the v2 description', async () => {
+    test('does not replay an ambiguous 200 HTML write response on v2', async () => {
       const client = createClient();
+      const fields = Object.freeze({ description });
+      const data = Object.freeze({ fields });
       reply.mockReturnValueOnce({ status: 200, headers: { 'Content-Type': 'text/html' }, body: '<html>Unsupported API</html>' });
 
-      await write(client, { fields: { description } });
+      await expect(write(client, data)).rejects.toMatchObject({
+        code: 'JIRA_AMBIGUOUS_WRITE_RESPONSE',
+        noVersionFallback: true,
+        status: 200
+      });
 
-      expect(requests).toHaveLength(2);
-      expect(requests[0].data.fields.description).toEqual(adf);
-      expect(requests[1]).toEqual({ method, url: `/rest/api/2${path}`, data: { fields: { description } } });
-      expect(client.apiVersion).toBe(2);
+      // The write may already be committed, so exactly one request is sent.
+      expect(requests).toEqual([{ method, url: `/rest/api/3${path}`, data: { fields: { description: adf } } }]);
+      expect(requests.some(request => request.url.startsWith('/rest/api/2'))).toBe(false);
+      expect(data.fields).toBe(fields);
+      expect(data.fields.description).toBe(description);
+      expect(client.apiVersion).toBe(3);
     });
 
     test.each([null, adf])('passes through null or pre-built ADF', async value => {
