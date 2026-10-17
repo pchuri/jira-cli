@@ -1,3 +1,10 @@
+## [3.0.1](https://github.com/pchuri/jira-cli/compare/v3.0.0...v3.0.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **deps:** pin compatible security overrides for CVE-2026-44705 ([#53](https://github.com/pchuri/jira-cli/issues/53)) ([3d500ff](https://github.com/pchuri/jira-cli/commit/3d500ff7c064f2edba615bcbe53b9366419fda2c))
+
 # [3.0.0](https://github.com/pchuri/jira-cli/compare/v2.12.1...v3.0.0) (2026-10-09)
 
 
