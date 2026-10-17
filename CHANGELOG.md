@@ -1,3 +1,10 @@
+## [3.0.2](https://github.com/pchuri/jira-cli/compare/v3.0.1...v3.0.2) (2026-10-17)
+
+
+### Bug Fixes
+
+* **deps:** patch npm bundle CVE-2026-102277 ([#54](https://github.com/pchuri/jira-cli/issues/54)) ([83be00b](https://github.com/pchuri/jira-cli/commit/83be00b990b6250a01631a635b8575a988679b9b))
+
 ## [3.0.1](https://github.com/pchuri/jira-cli/compare/v3.0.0...v3.0.1) (2026-10-17)
 
 
