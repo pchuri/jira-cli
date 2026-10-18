@@ -1,3 +1,10 @@
+## [3.0.4](https://github.com/pchuri/jira-cli/compare/v3.0.3...v3.0.4) (2026-10-18)
+
+
+### Bug Fixes
+
+* **deps:** remove unused and obsolete package overrides ([#56](https://github.com/pchuri/jira-cli/issues/56)) ([e3c701f](https://github.com/pchuri/jira-cli/commit/e3c701fd39cc0d496375f3bcb7bf0457b4330be7))
+
 ## [3.0.3](https://github.com/pchuri/jira-cli/compare/v3.0.2...v3.0.3) (2026-10-17)
 
 
